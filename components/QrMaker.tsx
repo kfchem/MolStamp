@@ -65,7 +65,7 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
   }, [shareUrl, ecc]);
 
   const canRender = Boolean(
-    shareUrl && encodedLength && encodedLength <= 4096 && !error,
+    shareUrl && encodedLength && encodedLength <= 4096 && !error
   );
 
   const copyUrl = useCallback(async () => {
@@ -130,7 +130,7 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
           Copy URL
         </button>
       </div>
-      <div className="flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-3">
         {canRender && pngUrl ? (
           <img src={pngUrl} alt="QR code" className="max-h-64 w-auto" />
         ) : (
@@ -138,41 +138,43 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
         )}
       </div>
       {error ? (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
+        </div>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Error correction</label>
-          <select
-            className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
-            value={ecc}
-            onChange={(e) => setEcc(e.target.value as ErrorCorrectionLevel)}
-            disabled={!shareUrl}
-          >
-            <option value="L">L (7%)</option>
-            <option value="M">M (15%)</option>
-            <option value="Q">Q (25%)</option>
-            <option value="H">H (30%)</option>
-          </select>
-        </div>
-        <div className="flex items-end gap-2">
-          <button
-            type="button"
-            onClick={downloadPng}
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={!canRender || !pngUrl}
-          >
-            Download PNG
-          </button>
-          <button
-            type="button"
-            onClick={downloadSvg}
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={!canRender || !svgMarkup}
-          >
-            Download SVG
-          </button>
-        </div>
+      <div className="grid gap-3 grid-cols-2">
+        <button
+          type="button"
+          onClick={downloadPng}
+          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!canRender || !pngUrl}
+        >
+          Download PNG
+        </button>
+        <button
+          type="button"
+          onClick={downloadSvg}
+          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!canRender || !svgMarkup}
+        >
+          Download SVG
+        </button>
+      </div>{" "}
+      <div>
+        <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          Error correction
+        </label>
+        <select
+          className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+          value={ecc}
+          onChange={(e) => setEcc(e.target.value as ErrorCorrectionLevel)}
+          disabled={!shareUrl}
+        >
+          <option value="L">L (7%)</option>
+          <option value="M">M (15%)</option>
+          <option value="Q">Q (25%)</option>
+          <option value="H">H (30%)</option>
+        </select>
       </div>
     </div>
   );

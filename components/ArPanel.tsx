@@ -36,7 +36,7 @@ type ModelViewerProps = DetailedHTMLProps<
 };
 // Use `any` to allow refs/methods like activateAR on the custom element
 const ModelViewer: any = "model-viewer" as unknown as (
-  props: ModelViewerProps,
+  props: ModelViewerProps
 ) => ReactElement;
 
 const formatBytes = (bytes: number): string => {
@@ -46,7 +46,13 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 };
 
-export const ArPanel = ({ source, disabled, compact = false, showOpenAr = true, showSizes = true }: ArPanelProps) => {
+export const ArPanel = ({
+  source,
+  disabled,
+  compact = false,
+  showOpenAr = true,
+  showSizes = true,
+}: ArPanelProps) => {
   const [glb, setGlb] = useState<ArtifactState | null>(null);
   const [usdz, setUsdz] = useState<ArtifactState | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -77,7 +83,7 @@ export const ArPanel = ({ source, disabled, compact = false, showOpenAr = true, 
       if (glb) URL.revokeObjectURL(glb.url);
       if (usdz) URL.revokeObjectURL(usdz.url);
     },
-    [glb, usdz],
+    [glb, usdz]
   );
 
   const ready = useMemo(() => Boolean(source) && !disabled, [source, disabled]);
@@ -112,13 +118,14 @@ export const ArPanel = ({ source, disabled, compact = false, showOpenAr = true, 
         setWorking(null);
       }
     },
-    [disabled, glb, source, usdz],
+    [disabled, glb, source, usdz]
   );
 
   const openAR = useCallback(async () => {
     if (!source || disabled) return;
     const isiOS =
-      typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+      typeof navigator !== "undefined" &&
+      /iPad|iPhone|iPod/.test(navigator.userAgent);
     try {
       setStatus(null);
       if (isiOS) {
@@ -151,24 +158,31 @@ export const ArPanel = ({ source, disabled, compact = false, showOpenAr = true, 
     }
   }, [buildIfNeeded, disabled, glb, source]);
 
-  const download = useCallback(async (kind: "glb" | "usdz") => {
-    const art = await buildIfNeeded(kind);
-    if (!art) return;
-    const filename = kind === "glb" ? "molequar.glb" : "molequar.usdz";
-    const a = document.createElement("a");
-    a.href = art.url;
-    a.download = filename;
-    a.rel = "noopener";
-    document.body.append(a);
-    a.click();
-    a.remove();
-  }, [buildIfNeeded]);
+  const download = useCallback(
+    async (kind: "glb" | "usdz") => {
+      const art = await buildIfNeeded(kind);
+      if (!art) return;
+      const filename = kind === "glb" ? "molequar.glb" : "molequar.usdz";
+      const a = document.createElement("a");
+      a.href = art.url;
+      a.download = filename;
+      a.rel = "noopener";
+      document.body.append(a);
+      a.click();
+      a.remove();
+    },
+    [buildIfNeeded]
+  );
 
   return (
-    <div className={`space-y-3 rounded-xl border border-slate-200 bg-white ${compact ? "p-3" : "p-4"}`}>
+    <div
+      className={`space-y-3 rounded-xl border border-slate-200 bg-white ${compact ? "p-3" : "p-4"}`}
+    >
       <div className="flex items-center justify-between">
         <div>
-          <h2 className={`${compact ? "text-base" : "text-lg"} font-semibold text-slate-900`}>
+          <h2
+            className={`${compact ? "text-base" : "text-lg"} font-semibold text-slate-900`}
+          >
             AR Model
           </h2>
         </div>
@@ -184,25 +198,26 @@ export const ArPanel = ({ source, disabled, compact = false, showOpenAr = true, 
           >
             {working === "usdz" || working === "glb" ? "Preparing…" : "Open AR"}
           </button>
-        ) : null}
-        <div className={`grid gap-2 ${showOpenAr ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-2"}`}>
-          <button
-            type="button"
-            className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => download("glb")}
-            disabled={!ready || working !== null}
-          >
-            Download GLB
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => download("usdz")}
-            disabled={!ready || working !== null}
-          >
-            Download USDZ
-          </button>
-        </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => download("glb")}
+              disabled={!ready || working !== null}
+            >
+              Download GLB
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => download("usdz")}
+              disabled={!ready || working !== null}
+            >
+              Download USDZ
+            </button>
+          </>
+        )}
       </div>
 
       {showSizes ? (

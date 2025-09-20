@@ -19,7 +19,7 @@ export type Molecule = {
 };
 
 export type StyleSettings = {
-  material: "standard" | "physical" | "lambert" | "toon";
+  material: "standard" | "metal" | "toon" | "glass";
   atomScale: number;
   bondRadius: number;
   quality: "low" | "medium" | "high" | "ultra";

@@ -109,6 +109,7 @@ export const Viewer = ({
   onGroupReady,
   className,
 }: ViewerProps) => {
+  const bgColor = molecule ? "#ffffff" : "#f3f6fb";
   return (
     <div className={`relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white ${className ?? "h-[520px]"}`}>
       {molecule ? null : (
@@ -122,7 +123,7 @@ export const Viewer = ({
         camera={{ position: [5, 5, 5], fov: 45 }}
         className="h-full w-full"
       >
-        <color attach="background" args={["#f3f6fb"]} />
+        <color attach="background" args={[bgColor]} />
         <ambientLight intensity={0.75} />
         <hemisphereLight args={[0xf5f7fb, 0x9aa5b1, 0.6]} />
         <directionalLight position={[4, 6, 3]} intensity={0.8} castShadow />

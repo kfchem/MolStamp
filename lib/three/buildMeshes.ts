@@ -37,47 +37,77 @@ export const buildMoleculeMesh = (
   // Material factory by style.material
   const createAtomMaterial = () => {
     switch (style.material) {
-      case "physical":
+      case "metal":
+        // 強い金属感 + 明るさ（環境マップ無しでも暗くなりすぎない）
+        return new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,
+          metalness: 0.5,
+          roughness: 0.25,
+          clearcoat: 0.4,
+          clearcoatRoughness: 0.1,
+        });
+      case "toon":
+        // くっきりした陰影
+        return new THREE.MeshToonMaterial({ color: 0xffffff });
+      case "glass":
+        // 透過 + 物質感（減衰と厚みでボリュームを出す）
         return new THREE.MeshPhysicalMaterial({
           color: 0xffffff,
           metalness: 0.0,
-          roughness: 0.35,
-          clearcoat: 0.2,
-          reflectivity: 0.4,
+          roughness: 0.06,
+          transmission: 1.0,
+          thickness: 2.0,
+          attenuationDistance: 0.8,
+          attenuationColor: new THREE.Color(0xeaf2ff),
+          ior: 1.5,
+          transparent: true,
+          opacity: 0.65,
+          depthWrite: true,
+          side: THREE.FrontSide,
         });
-      case "lambert":
-        return new THREE.MeshLambertMaterial({ color: 0xffffff });
-      case "toon":
-        return new THREE.MeshToonMaterial({ color: 0xffffff });
       case "standard":
       default:
+        // 標準: ややマット
         return new THREE.MeshStandardMaterial({
           color: 0xffffff,
-          metalness: 0.1,
+          metalness: 0.05,
           roughness: 0.6,
         });
     }
   };
   const createBondMaterial = () => {
     switch (style.material) {
-      case "physical":
+      case "metal":
         return new THREE.MeshPhysicalMaterial({
-          color: 0xffffff,
-          metalness: 0.0,
-          roughness: 0.45,
-          clearcoat: 0.1,
-          reflectivity: 0.3,
+          color: 0xe9ecef,
+          metalness: 0.5,
+          roughness: 0.28,
+          clearcoat: 0.35,
+          clearcoatRoughness: 0.1,
         });
-      case "lambert":
-        return new THREE.MeshLambertMaterial({ color: 0xffffff });
       case "toon":
-        return new THREE.MeshToonMaterial({ color: 0xffffff });
+        return new THREE.MeshToonMaterial({ color: 0xe9ecef });
+      case "glass":
+        return new THREE.MeshPhysicalMaterial({
+          color: 0xe9ecef,
+          metalness: 0.0,
+          roughness: 0.08,
+          transmission: 1.0,
+          thickness: 2.0,
+          attenuationDistance: 0.8,
+          attenuationColor: new THREE.Color(0xeaf2ff),
+          ior: 1.5,
+          transparent: true,
+          opacity: 0.7,
+          depthWrite: true, // キャップが透けて見えないように
+          side: THREE.FrontSide,
+        });
       case "standard":
       default:
         return new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          metalness: 0.1,
-          roughness: 0.4,
+          color: 0xe9ecef,
+          metalness: 0.05,
+          roughness: 0.45,
         });
     }
   };

@@ -19,9 +19,33 @@ const convertInstancedMesh = (instanced: THREE.InstancedMesh) => {
       color.setHex(0xffffff);
     }
 
-    const geometry = instanced.geometry.clone();
+  const geometry = instanced.geometry.clone();
+  // 頂点カラーがある場合、マテリアルにvertexColorsを有効化
     // Normalize to MeshStandardMaterial for better USDZ compatibility
-    const material = new THREE.MeshStandardMaterial({ color: color.getHex() });
+    // 可能な限り元マテリアルの性質を引き継ぐ
+    const matParams: THREE.MeshStandardMaterialParameters = {
+      color: color.getHex(),
+    };
+    const bm = Array.isArray(baseMaterial) ? baseMaterial[0] : (baseMaterial as THREE.Material);
+    const anyBm = bm as any;
+    if (anyBm) {
+      if (typeof anyBm.metalness === "number") matParams.metalness = anyBm.metalness;
+      if (typeof anyBm.roughness === "number") matParams.roughness = anyBm.roughness;
+      if (typeof anyBm.opacity === "number") matParams.opacity = anyBm.opacity;
+      if (typeof anyBm.transparent === "boolean") matParams.transparent = anyBm.transparent;
+      // Lambert/Toon はPBRではないため、見た目が近くなるように少しマット寄りに
+      if (anyBm.isMeshLambertMaterial || anyBm.isMeshToonMaterial) {
+        matParams.metalness = matParams.metalness ?? 0.0;
+        matParams.roughness = matParams.roughness ?? 0.85;
+      }
+      // PhysicalはStandardへ写経（clearcoat等はUSDZExporterで限定的サポートのため無視/近似）
+      if (anyBm.isMeshPhysicalMaterial) {
+        matParams.metalness = matParams.metalness ?? 0.0;
+        matParams.roughness = matParams.roughness ?? 0.35;
+      }
+      // 明示的に両面は避ける（Quick Lookで不具合のことがある）
+    }
+  const material = new THREE.MeshStandardMaterial({ ...matParams, vertexColors: Boolean((geometry as any).attributes?.color) });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.applyMatrix4(matrix);
     group.add(mesh);
@@ -57,11 +81,44 @@ const replaceInstancedMeshes = (root: THREE.Object3D) => {
   });
 };
 
+// MeshStandardMaterialへ正規化（非インスタンス用）
+const normalizeMaterials = (root: THREE.Object3D) => {
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const base = mesh.material as THREE.Material | THREE.Material[];
+    const toStd = (m: THREE.Material) => {
+      const anyM = m as any;
+      const params: THREE.MeshStandardMaterialParameters = {};
+      if (anyM.color) params.color = anyM.color.getHex?.() ?? anyM.color;
+      if (typeof anyM.metalness === "number") params.metalness = anyM.metalness;
+      if (typeof anyM.roughness === "number") params.roughness = anyM.roughness;
+      if (typeof anyM.opacity === "number") params.opacity = anyM.opacity;
+      if (typeof anyM.transparent === "boolean") params.transparent = anyM.transparent;
+      if (anyM.isMeshLambertMaterial || anyM.isMeshToonMaterial) {
+        params.metalness = params.metalness ?? 0.0;
+        params.roughness = params.roughness ?? 0.85;
+      }
+      if (anyM.isMeshPhysicalMaterial) {
+        params.metalness = params.metalness ?? 0.0;
+        params.roughness = params.roughness ?? 0.35;
+      }
+      return new THREE.MeshStandardMaterial(params);
+    };
+    if (Array.isArray(base)) {
+      mesh.material = base.map((m) => (m as any).isMeshStandardMaterial ? (m as any) : toStd(m));
+    } else if (!(base as any).isMeshStandardMaterial) {
+      mesh.material = toStd(base);
+    }
+  });
+};
+
 export const prepareSceneForExport = (source: THREE.Group): THREE.Scene => {
   const scene = new THREE.Scene();
   const clone = source.clone(true);
 
   replaceInstancedMeshes(clone);
+  normalizeMaterials(clone);
 
   // Scale down to ~1% so AR viewers (meters-based) don't show the model too large
   clone.scale.setScalar(0.01);

@@ -117,9 +117,9 @@ export const encodeShareData = ({
   // style packing (more compact): mode 1b, atomScale 6b with step 0.02, bondRadius 6b with step 0.02, quality 2b
   const materialMap: Record<StyleSettings["material"], number> = {
     standard: 0,
-    physical: 1,
-    lambert: 2,
-    toon: 3,
+    metal: 1,
+    toon: 2,
+    glass: 3,
   };
   const material2 = materialMap[style.material] ?? 0;
   const atomScaleQ6 = Math.max(0, Math.min(63, Math.round(style.atomScale / 0.02)));

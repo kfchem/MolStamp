@@ -16,9 +16,9 @@ const QUALITY_LABELS: Record<StyleSettings["quality"], string> = {
 };
 const MATERIAL_LABELS: Record<StyleSettings["material"], string> = {
   standard: "Standard",
-  physical: "Physical",
-  lambert: "Lambert",
+  metal: "Metal",
   toon: "Toon",
+  glass: "Glass",
 };
 const formatAtomScale = (value: number): string => `${value.toFixed(2)}× vdW`;
 

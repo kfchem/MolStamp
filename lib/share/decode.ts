@@ -96,9 +96,9 @@ export const decodeShareSegment = (segment: string): DecodedShare => {
 
       const materialMap: Record<number, StyleSettings["material"]> = {
         0: "standard",
-        1: "physical",
-        2: "lambert",
-        3: "toon",
+        1: "metal",
+        2: "toon",
+        3: "glass",
       };
       const style: ShareStyle = {
         material: materialMap[material2] ?? "standard",
