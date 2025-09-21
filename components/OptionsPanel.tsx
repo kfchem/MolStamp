@@ -1,6 +1,6 @@
 "use client";
-
 import { StyleSettings } from "@/lib/chem/types";
+import { AnimatedSelect } from "./AnimatedSelect";
 
 export type OptionsPanelProps = {
   value: StyleSettings;
@@ -20,51 +20,18 @@ const MATERIAL_LABELS: Record<StyleSettings["material"], string> = {
   toon: "Toon",
   glass: "Glass",
 };
-const formatAtomScale = (value: number): string => `${value.toFixed(2)}× vdW`;
+//
 
 export const OptionsPanel = ({ value, onChange, disabled }: OptionsPanelProps) => {
   const update = (partial: Partial<StyleSettings>) => onChange({ ...value, ...partial });
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-4 ${disabled ? "opacity-60" : ""}`}>
+    <div className={`rounded-xl border border-slate-300 bg-white p-4 shadow-sm ${disabled ? "opacity-60" : ""}`}>
       <h2 className="text-lg font-semibold text-slate-900">Rendering Options</h2>
       <div className="mt-3 grid gap-4 md:grid-cols-2">
         <div>
-          <label className="text-sm font-medium text-slate-700">Material</label>
-          <select
-            className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
-            value={value.material}
-            onChange={(e) => update({ material: e.target.value as StyleSettings["material"] })}
-            disabled={disabled}
-          >
-            {Object.entries(MATERIAL_LABELS).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="flex justify-between text-sm font-medium text-slate-700">
-            <span>Quality</span>
-            <span className="text-slate-500">{QUALITY_LABELS[value.quality]}</span>
-          </label>
-          <select
-            className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
-            value={value.quality}
-            onChange={(event) => update({ quality: event.target.value as StyleSettings["quality"] })}
-            disabled={disabled}
-          >
-            {Object.entries(QUALITY_LABELS).map(([quality, label]) => (
-              <option key={quality} value={quality}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
           <label className="flex justify-between text-sm font-medium text-slate-700">
             <span>Atom scale</span>
-            <span className="text-slate-500">{formatAtomScale(value.atomScale)}</span>
+            <span className="text-slate-500">× {value.atomScale.toFixed(2)}</span>
           </label>
           <input
             type="range"
@@ -91,6 +58,32 @@ export const OptionsPanel = ({ value, onChange, disabled }: OptionsPanelProps) =
             onChange={(event) => update({ bondRadius: Number.parseFloat(event.target.value) })}
             disabled={disabled}
             className="mt-3 w-full accent-sky-500"
+          />
+        </div>
+        <div>
+          <label className="flex justify-between text-sm font-medium text-slate-700">
+            <span>Material</span>
+            <span className="text-slate-500">{MATERIAL_LABELS[value.material]}</span>
+          </label>
+          <AnimatedSelect
+            className="mt-2"
+            value={value.material}
+            onChange={(v) => update({ material: v })}
+            options={Object.entries(MATERIAL_LABELS).map(([value, label]) => ({ value: value as StyleSettings["material"], label }))}
+            disabled={disabled}
+          />
+        </div>
+        <div>
+          <label className="flex justify-between text-sm font-medium text-slate-700">
+            <span>Quality</span>
+            <span className="text-slate-500">{QUALITY_LABELS[value.quality]}</span>
+          </label>
+          <AnimatedSelect
+            className="mt-2"
+            value={value.quality}
+            onChange={(v) => update({ quality: v })}
+            options={Object.entries(QUALITY_LABELS).map(([value, label]) => ({ value: value as StyleSettings["quality"], label }))}
+            disabled={disabled}
           />
         </div>
       </div>

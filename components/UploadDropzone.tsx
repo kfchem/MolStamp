@@ -154,14 +154,7 @@ export const UploadDropzone = ({
             isDragging ? "border-sky-400 bg-sky-50/70" : "border-transparent"
           }`}
         />
-        {/* 右上にファイル選択 */}
-        {disableClick && disableDrop ? null : (
-          <div className="pointer-events-none absolute right-3 top-3 z-10">
-            <span className="rounded-full bg-white/80 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 backdrop-blur">
-              Click or Drop file (SDF/XYZ)
-            </span>
-          </div>
-        )}
+        {/* 右上のヒントは中央プレースホルダに統合したため削除 */}
         <input
           ref={inputRef}
           type="file"

@@ -78,7 +78,7 @@ const ShareQrClient = ({ payload }: ShareQrClientProps) => {
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             <Viewer molecule={molecule} style={style} onGroupReady={setViewerGroup} />
 
             <details className="rounded-xl border border-slate-200 bg-white p-4" open={false}>
@@ -98,7 +98,7 @@ const ShareQrClient = ({ payload }: ShareQrClientProps) => {
             ) : null}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             <ArPanel source={viewerGroup} disabled={!molecule} compact showOpenAr showSizes={false} />
           </div>
         </div>

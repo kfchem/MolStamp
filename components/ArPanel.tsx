@@ -176,7 +176,7 @@ export const ArPanel = ({
 
   return (
     <div
-      className={`space-y-3 rounded-xl border border-slate-200 bg-white ${compact ? "p-3" : "p-4"}`}
+      className={`space-y-3 rounded-xl border border-slate-300 bg-white ${compact ? "p-3" : "p-4"} shadow-sm`}
     >
       <div className="flex items-center justify-between">
         <div>
@@ -186,38 +186,35 @@ export const ArPanel = ({
             AR Model
           </h2>
         </div>
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-2">
         {showOpenAr ? (
           <button
             type="button"
-            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
             onClick={openAR}
             disabled={!ready || working !== null}
           >
             {working === "usdz" || working === "glb" ? "Preparing…" : "Open AR"}
           </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={() => download("glb")}
-              disabled={!ready || working !== null}
-            >
-              Download GLB
-            </button>
-            <button
-              type="button"
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={() => download("usdz")}
-              disabled={!ready || working !== null}
-            >
-              Download USDZ
-            </button>
-          </>
-        )}
+        ) : null}
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={() => download("glb")}
+          disabled={!ready || working !== null}
+        >
+          Download GLB
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={() => download("usdz")}
+          disabled={!ready || working !== null}
+        >
+          Download USDZ
+        </button>
       </div>
 
       {showSizes ? (

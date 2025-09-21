@@ -152,27 +152,32 @@ const HomePage = () => {
   }, [fileMeta, format, molecule]);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+  <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5 px-4 pb-10 pt-6 sm:px-6 lg:px-8">
       <header className="space-y-3">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <h1 className="bg-gradient-to-r from-sky-600 to-violet-600 bg-clip-text text-4xl font-extrabold text-transparent md:text-5xl">
               {APP_NAME}
             </h1>
-            {headerMeta ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {headerMeta.map((chip) => (
-                  <span
-                    key={chip}
-                    className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
-                  >
-                    {chip}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-slate-600">{headerSubtitle}</p>
-            )}
+            <div className="mt-2 min-h-6">
+              {headerMeta ? (
+                <div className="flex flex-wrap gap-2">
+                  {headerMeta.map((chip) => (
+                    <span
+                      key={chip}
+                      className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm leading-6 text-slate-600">
+                  {headerSubtitle}
+                  <span className="text-slate-500"> • Everything runs locally in your browser</span>
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -205,7 +210,7 @@ const HomePage = () => {
       </header>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           {/* プレビューとドロップ枠を統合 */}
           <UploadDropzone
             variant="overlay"
@@ -240,8 +245,8 @@ const HomePage = () => {
         </div>
 
         {/* 右カラム: AR → QR の順に配置 */}
-        <div className="space-y-4 lg:sticky lg:top-6">
-          <ArPanel source={viewerGroup} disabled={!molecule} showOpenAr={false} showSizes={false} />
+        <div className="space-y-4 lg:sticky lg:top-6 min-w-0">
+          <ArPanel source={viewerGroup} disabled={!molecule} showOpenAr showSizes={false} />
           <QrMaker shareUrl={shareState?.url ?? null} encodedLength={shareState?.encoded.length ?? null} />
         </div>
       </div>

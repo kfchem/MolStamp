@@ -91,7 +91,7 @@ const ShareQrPage = () => {
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             <Viewer molecule={molecule} style={style} onGroupReady={setViewerGroup} />
 
             {/* Rendering Options をアコーディオンでデフォルト非表示 */}
@@ -108,7 +108,7 @@ const ShareQrPage = () => {
             </details>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             {/* AR はボタン一つの見た目に */}
             <ArPanel source={viewerGroup} disabled={!molecule} compact showOpenAr showSizes={false} />
           </div>

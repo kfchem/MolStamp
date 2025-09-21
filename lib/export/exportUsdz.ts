@@ -26,6 +26,7 @@ export const exportUsdz = async (object: Object3D): Promise<Blob> => {
       (error) => {
         reject(error as Error);
       },
+      { quickLookCompatible: true },
     );
   });
 
