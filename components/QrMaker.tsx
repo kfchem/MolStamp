@@ -82,17 +82,27 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
     const buildCenterIconSvg = (width: number, iconHref: string | null) => {
       if (!iconHref) return "";
       const box = width * 0.22;
-      const pad = box * 0.12;
       const cx = width / 2;
       const cy = width / 2;
-      const bgRadius = Math.min(10, box * 0.2);
-      const W = (box + pad).toFixed(2);
       const B = box.toFixed(2);
-      const R = bgRadius.toFixed(2);
+      // Outline thickness relative to icon size (no blur)
+      const t = Math.max(1, box * 0.06);
+      const filterId = `qrIconOutline`;
       return (
+        `<defs>` +
+        `<filter id="${filterId}" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">` +
+        `<feMorphology operator="dilate" radius="${t.toFixed(2)}" in="SourceAlpha" result="dilated"/>` +
+        `<feComposite in="dilated" in2="SourceAlpha" operator="out" result="ring"/>` +
+        `<feFlood flood-color="#ffffff" flood-opacity="1" result="white"/>` +
+        `<feComposite in="white" in2="ring" operator="in" result="outline"/>` +
+        `<feMerge>` +
+        `<feMergeNode in="outline"/>` +
+        `<feMergeNode in="SourceGraphic"/>` +
+        `</feMerge>` +
+        `</filter>` +
+        `</defs>` +
         `<g transform="translate(${cx.toFixed(2)}, ${cy.toFixed(2)})">` +
-        `<rect x="${(-(parseFloat(W) / 2)).toFixed(2)}" y="${(-(parseFloat(W) / 2)).toFixed(2)}" width="${W}" height="${W}" rx="${R}" ry="${R}" fill="#ffffff"/>` +
-        `<image href="${iconHref}" x="${(-(parseFloat(B) / 2)).toFixed(2)}" y="${(-(parseFloat(B) / 2)).toFixed(2)}" width="${B}" height="${B}" preserveAspectRatio="xMidYMid meet" />` +
+        `<image href="${iconHref}" x="${(-(parseFloat(B) / 2)).toFixed(2)}" y="${(-(parseFloat(B) / 2)).toFixed(2)}" width="${B}" height="${B}" preserveAspectRatio="xMidYMid meet" filter="url(#${filterId})" />` +
         `</g>`
       );
     };
@@ -104,34 +114,49 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
     ) => {
       if (!iconHref) return;
       const box = width * 0.22;
-      const pad = box * 0.12;
       const cx = width / 2;
       const cy = width / 2;
-      const bgRadius = Math.min(20, box * 0.2);
-      const rr = Math.min(bgRadius, box / 2 + pad / 2);
       ctx.imageSmoothingEnabled = true;
-      const drawRounded = (x: number, y: number, w: number, h: number, r: number) => {
-        const rad = Math.min(r, w / 2, h / 2);
-        ctx.beginPath();
-        ctx.moveTo(x + rad, y);
-        ctx.lineTo(x + w - rad, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
-        ctx.lineTo(x + w, y + h - rad);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
-        ctx.lineTo(x + rad, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
-        ctx.lineTo(x, y + rad);
-        ctx.quadraticCurveTo(x, y, x + rad, y);
-        ctx.closePath();
-        ctx.fill();
-      };
-      ctx.fillStyle = "#ffffff";
-      drawRounded(cx - (box + pad) / 2, cy - (box + pad) / 2, box + pad, box + pad, rr);
       try {
         const img = await loadImage(iconHref);
         const ratio = img.width / img.height;
         let w = box, h = box;
         if (ratio > 1) h = box / ratio; else w = box * ratio;
+
+        // Build silhouette from icon alpha on an offscreen canvas
+        const off = document.createElement("canvas");
+        off.width = Math.ceil(w);
+        off.height = Math.ceil(h);
+        const offCtx = off.getContext("2d")!;
+        offCtx.imageSmoothingEnabled = true;
+        offCtx.drawImage(img, 0, 0, w, h);
+        offCtx.globalCompositeOperation = "source-in";
+        offCtx.fillStyle = "#ffffff";
+        offCtx.fillRect(0, 0, off.width, off.height);
+
+        // Create crisp outline (no blur) via dilate-approximation and subtract original
+        const tPx = Math.ceil(Math.max(1, box * 0.06));
+        const ring = document.createElement("canvas");
+        ring.width = off.width + 2 * tPx;
+        ring.height = off.height + 2 * tPx;
+        const ringCtx = ring.getContext("2d")!;
+        ringCtx.imageSmoothingEnabled = true;
+        const steps = 48;
+        for (let r = 1; r <= tPx; r++) {
+          for (let i = 0; i < steps; i++) {
+            const theta = (i / steps) * Math.PI * 2;
+            const dx = Math.cos(theta) * r;
+            const dy = Math.sin(theta) * r;
+            ringCtx.drawImage(off, tPx + dx, tPx + dy);
+          }
+        }
+        // Subtract the original silhouette to leave only the outer ring
+        ringCtx.globalCompositeOperation = "destination-out";
+        ringCtx.drawImage(off, tPx, tPx);
+        ringCtx.globalCompositeOperation = "source-over";
+
+        // Draw outline then original icon
+        ctx.drawImage(ring, cx - ring.width / 2, cy - ring.height / 2);
         ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
       } catch {}
     };
