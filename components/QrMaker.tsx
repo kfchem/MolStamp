@@ -405,7 +405,7 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
     if (!canRender || !pngUrl) return;
     const anchor = document.createElement("a");
     anchor.href = pngUrl;
-    anchor.download = "molequar-qr.png";
+  anchor.download = "m2go-qr.png";
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -417,7 +417,7 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "molequar-qr.svg";
+  a.download = "m2go-qr.svg";
     document.body.append(a);
     a.click();
     a.remove();
@@ -454,6 +454,7 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
                 dangerouslySetInnerHTML={{ __html: svgPreview }}
               />
             ) : (
+              // eslint-disable-next-line @next/next/no-img-element
               <motion.img
                 key="qr-png"
                 src={pngUrl!}
@@ -579,7 +580,7 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
                       }}
                       options={[
                         { value: "none", label: "None" },
-                        { value: "brand", label: "MoleQuAR" },
+                        { value: "brand", label: "Molecular ToGo" },
                         { value: "upload", label: "Upload" },
                       ]}
                       disabled={!shareUrl}
@@ -600,7 +601,8 @@ export const QrMaker = ({ shareUrl, encodedLength }: QrMakerProps) => {
                     {centerIcon === "upload" && uploadedIconUrl ? (
                       <div className="mt-2 flex items-center gap-2">
                         <span className="text-xs text-slate-500">Preview:</span>
-                        <img src={uploadedIconUrl} alt="icon" className="h-8 w-8 object-contain rounded" />
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={uploadedIconUrl} alt="icon" width={32} height={32} className="h-8 w-8 object-contain rounded" />
                         <button
                           type="button"
                           className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-sky-300 hover:text-sky-600"

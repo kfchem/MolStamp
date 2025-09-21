@@ -112,7 +112,7 @@ const HomePage = () => {
           return;
         }
         const origin = typeof window !== "undefined" ? window.location.origin : "";
-        const fallbackOrigin = "https://molequar.kfchem.dev";
+  const fallbackOrigin = "https://m2go.kfchem.dev";
         const url = buildShareUrl(origin || fallbackOrigin, encoded);
         setShareState({ encoded, byteLength, url });
         setError(null);
@@ -193,18 +193,18 @@ const HomePage = () => {
               </svg>
               Reset
             </button>
-            <a
-              href="https://github.com/kfchem/molequar"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Open GitHub repository"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-            >
-              {/* GitHub icon */}
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.486 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.091.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.605-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.607.069-.607 1.004.07 1.532 1.032 1.532 1.032.893 1.53 2.341 1.088 2.91.833.091-.647.35-1.088.636-1.339-2.221-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.378.202 2.397.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.337 4.695-4.566 4.944.359.31.679.919.679 1.852 0 1.336-.012 2.414-.012 2.742 0 .267.18.577.688.479A10.02 10.02 0 0 0 22 12.017C22 6.486 17.523 2 12 2z" />
-              </svg>
-            </a>
+              <a
+                href="https://github.com/kfchem/m2go"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open GitHub repository"
+                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                {/* GitHub icon */}
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.486 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.091.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.605-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.607.069-.607 1.004.07 1.532 1.032 1.532 1.032.893 1.53 2.341 1.088 2.91.833.091-.647.35-1.088.636-1.339-2.221-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.378.202 2.397.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.337 4.695-4.566 4.944.359.31.679.919.679 1.852 0 1.336-.012 2.414-.012 2.742 0 .267.18.577.688.479A10.02 10.02 0 0 0 22 12.017C22 6.486 17.523 2 12 2z" />
+                </svg>
+              </a>
           </div>
         </div>
       </header>

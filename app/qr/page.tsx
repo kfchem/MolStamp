@@ -201,7 +201,7 @@ const ShareQrPage = () => {
     } finally {
       setArExporting(false);
     }
-  }, [rebuildArtifacts, viewerGroup]);
+  }, [rebuildArtifacts, viewerGroup, mvReady]);
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -294,17 +294,17 @@ const ShareQrPage = () => {
            </button>
          </div>
  
-         {/* Powered by (bottom-right) – more subtle; link on MoleQuAR only */}
+         {/* Powered by (bottom-right) – more subtle; link to project */}
          <div className="pointer-events-none fixed select-none text-[10px] text-slate-400" style={{ right: "max(0.5rem, env(safe-area-inset-right))", bottom: "max(0.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))" }}>
            <div className="pointer-events-auto inline-flex items-center gap-1 rounded-md bg-white/50 px-1.5 py-0.5 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm">
              <span className="opacity-80">Powered by</span>
              <a
-               href="https://github.com/kfchem/molequar"
+               href="https://github.com/kfchem/m2go"
                target="_blank"
                rel="noreferrer"
                className="font-medium text-slate-500 underline-offset-2 hover:text-sky-600 hover:underline"
              >
-               MoleQuAR
+               Molecular ToGo
              </a>
            </div>
          </div>

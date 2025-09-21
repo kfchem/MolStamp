@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { ReactNode } from "react";
+import { APP_NAME, TAGLINE } from "@/lib/branding";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "MoleQuAR",
-  description: "Molecules from QR to AR.",
+  title: APP_NAME,
+  description: TAGLINE,
   icons: {
     icon: "/favicon.svg",
   },

@@ -162,7 +162,7 @@ export const ArPanel = ({
     async (kind: "glb" | "usdz") => {
       const art = await buildIfNeeded(kind);
       if (!art) return;
-      const filename = kind === "glb" ? "molequar.glb" : "molequar.usdz";
+  const filename = kind === "glb" ? "m2go.glb" : "m2go.usdz";
       const a = document.createElement("a");
       a.href = art.url;
       a.download = filename;

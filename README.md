@@ -1,6 +1,6 @@
-# MoleQuAR
+# Molecular ToGo
 
-Molecules from QR to AR.
+Share molecules fast — from QR to AR.
 
 - Upload SDF/XYZ on desktop, generate a QR with embedded payload, scan on mobile, and view in AR — all client-side, no server storage.
 - Next.js 15, TypeScript strict, three.js, <model-viewer>.

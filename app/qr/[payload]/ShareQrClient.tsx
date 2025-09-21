@@ -66,7 +66,7 @@ const ShareQrClient = ({ payload }: ShareQrClientProps) => {
         <h1 className="text-3xl font-bold text-slate-900">{APP_NAME}</h1>
         <p className="text-slate-600">{subtitle}</p>
         <div className="mt-1 text-xs text-slate-500">
-          <a href="https://github.com/kfchem/molequar" target="_blank" rel="noreferrer" className="hover:underline">
+          <a href="https://github.com/kfchem/m2go" target="_blank" rel="noreferrer" className="hover:underline">
             GitHub
           </a>
         </div>
