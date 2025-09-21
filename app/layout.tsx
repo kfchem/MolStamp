@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script
           src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"
           type="module"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
       </body>
     </html>

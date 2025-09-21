@@ -11,10 +11,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-  "framer-motion": "^11.3.17",
     "@google/model-viewer": "^4.1.0",
+    "@heroicons/react": "^2.2.0",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
+    "framer-motion": "^11.3.17",
     "next": "^15.5.3",
     "pako": "^2.1.0",
     "qrcode": "^1.5.4",

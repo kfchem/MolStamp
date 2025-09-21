@@ -179,22 +179,26 @@ export const buildMoleculeMesh = (
       const fullLength = direction.length();
       if (fullLength === 0) return;
 
-      const dirNorm = direction.clone().normalize();
-      const rA = (getVdwRadius(a.symbol) ?? 1.5) * style.atomScale;
-      const rB = (getVdwRadius(b.symbol) ?? 1.5) * style.atomScale;
-  const innerLength = fullLength - (rA + rB);
+    const dirNorm = direction.clone().normalize();
+    const rA = (getVdwRadius(a.symbol) ?? 1.5) * style.atomScale;
+    const rB = (getVdwRadius(b.symbol) ?? 1.5) * style.atomScale;
+    // Slightly overlap bonds into atoms to avoid tiny visual gaps due to precision/shading
+    const capInset = Math.min(0.06, Math.max(0.02, style.bondRadius * 0.75));
+    const rAe = Math.max(0, rA - capInset);
+    const rBe = Math.max(0, rB - capInset);
+    const innerLength = fullLength - (rAe + rBe);
 
       // If atoms overlap or touch, skip rendering this bond
       if (innerLength <= 1e-3) return;
 
-      const halfSpan = innerLength * 0.5; // total length of each half cylinder
+  const halfSpan = innerLength * 0.5; // total length of each half cylinder
       const halfHalf = halfSpan * 0.5; // distance from center of half cylinder to its end
       quaternion.setFromUnitVectors(axisY, dirNorm);
 
       // Half from A side: center at rA + quarter of inner length
       const centerA = new THREE.Vector3()
         .copy(position)
-        .addScaledVector(dirNorm, rA + halfHalf);
+        .addScaledVector(dirNorm, rAe + halfHalf);
       scale.set(style.bondRadius, halfSpan, style.bondRadius);
       matrix.compose(centerA, quaternion, scale);
       bondMesh.setMatrixAt(instanceIndex++, matrix);
@@ -202,7 +206,7 @@ export const buildMoleculeMesh = (
       // Half from B side: center at rB + quarter of inner length from B
       const centerB = new THREE.Vector3()
         .copy(target)
-        .addScaledVector(dirNorm, -rB - halfHalf);
+        .addScaledVector(dirNorm, -rBe - halfHalf);
       matrix.compose(centerB, quaternion, scale);
       bondMesh.setMatrixAt(instanceIndex++, matrix);
     });
