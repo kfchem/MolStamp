@@ -62,7 +62,12 @@ const HomePage = () => {
     encoded: string;
     byteLength: number;
     url: string;
+    scaleExp: number;
   } | null>(null);
+  const [omitBonds, setOmitBonds] = useState<boolean>(false);
+  const [coarseCoords, setCoarseCoords] = useState<boolean>(false);
+  // Decimal precision selector (0..3 digits after decimal)
+  const [decimalDigits, setDecimalDigits] = useState<0 | 1 | 2 | 3>(3);
 
   const onFileLoaded = useCallback((payload: UploadPayload) => {
     setError(null);
@@ -103,18 +108,21 @@ const HomePage = () => {
     }
     const id = setTimeout(() => {
       try {
-        const { encoded, byteLength } = encodeShareData({ molecule, style });
-        if (encoded.length > 4096) {
-          setError(
-            "Embedded payload exceeds 4096 characters and may be unreliable. Reduce the molecule or quality.",
-          );
-          setShareState(null);
-          return;
-        }
+  // Map decimal digits to precisionDrop (empirical):
+  // 3 digits ≈ 0 bits, 2 digits ≈ 2 bits, 1 digit ≈ 5 bits, 0 digit ≈ 8 bits
+  const precisionDrop = ((): 0 | 2 | 5 | 8 => {
+    switch (decimalDigits) {
+      case 3: return 0;
+      case 2: return 2;
+      case 1: return 5;
+      default: return 8; // 0 digits
+    }
+  })();
+  const { encoded, byteLength, scaleExp } = encodeShareData({ molecule, style, omitBonds, coarseCoords, precisionDrop });
         const origin = typeof window !== "undefined" ? window.location.origin : "";
   const fallbackOrigin = "https://m2go.kfchem.dev";
         const url = buildShareUrl(origin || fallbackOrigin, encoded);
-        setShareState({ encoded, byteLength, url });
+  setShareState({ encoded, byteLength, url, scaleExp });
         setError(null);
       } catch (e) {
         console.error(e);
@@ -123,7 +131,7 @@ const HomePage = () => {
       }
     }, 600);
     return () => clearTimeout(id);
-  }, [molecule, style]);
+  }, [molecule, style, omitBonds, coarseCoords, decimalDigits]);
 
   const headerSubtitle = useMemo(() => {
     if (!molecule || !fileMeta) {
@@ -245,10 +253,21 @@ const HomePage = () => {
         </div>
 
         {/* 右カラム: AR → QR の順に配置 */}
-        <div className="space-y-4 lg:sticky lg:top-6 min-w-0">
-          <ArPanel source={viewerGroup} disabled={!molecule} showOpenAr showSizes={false} />
-          <QrMaker shareUrl={shareState?.url ?? null} encodedLength={shareState?.encoded.length ?? null} />
-        </div>
+          <div className="space-y-4 lg:sticky lg:top-6 min-w-0">
+            <ArPanel source={viewerGroup} disabled={!molecule} showOpenAr showSizes={false} />
+            <QrMaker
+              shareUrl={shareState?.url ?? null}
+              encodedLength={shareState?.encoded.length ?? null}
+              payloadBytes={shareState?.byteLength ?? null}
+              scaleExp={shareState?.scaleExp}
+              omitBonds={omitBonds}
+              onChangeOmitBonds={setOmitBonds}
+              coarseCoords={coarseCoords}
+              onChangeCoarseCoords={setCoarseCoords}
+              decimalDigits={decimalDigits}
+              onChangeDecimalDigits={setDecimalDigits}
+            />
+          </div>
       </div>
     </main>
   );
