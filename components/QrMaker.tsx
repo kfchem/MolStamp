@@ -401,7 +401,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
           parts.push(`Base URL: ${fmt(baseBytes)}`);
           const detail = parts.join(" • ");
           if (/code length overflow/i.test(msg)) {
-            setError(`Payload exceeds QR capacity (${detail}). Try Bond omission, increase Coordinate step (e.g., drop bits 0→2→4→6→8), enable Use delta encoding, or lower Error correction.`);
+            setError(`Payload exceeds QR capacity (${detail}). Try Bond omission, increase Coordinate step (approx.) (e.g., drop bits 0→2→4→6→8), enable Use delta encoding, or lower Error correction.`);
           } else {
             setError(`${msg} (${detail})`);
           }
@@ -635,33 +635,34 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                 ) : null}
                 {typeof precisionDrop !== "undefined" && onChangePrecisionDrop ? (
                   <div>
-                    <label className="flex items-center justify-between">
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Coordinate step</span>
-                      <span className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500">Å (effective)</span>
-                        <select
-                          className="h-7 rounded border-slate-300 text-slate-700 text-xs"
-                          value={precisionDrop}
-                          onChange={(e) => onChangePrecisionDrop?.(Number(e.target.value) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8)}
-                          disabled={!shareUrl}
-                        >
-                          {(() => {
-                            const e = typeof scaleExp === "number" ? scaleExp : 0;
-                            const label = (drop: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
-                              const step = Math.pow(2, e + drop) / 1000; // Å
-                              const fmt = step >= 0.1 ? `${step.toFixed(2)} Å` : step >= 0.01 ? `${step.toFixed(3)} Å` : `${step.toFixed(4)} Å`;
-                              const tag = step < 0.01 ? "High" : step < 0.05 ? "Med" : step < 0.2 ? "Low" : "Very low";
-                              return `${fmt} (${tag})`;
-                            };
-                            const opts = [] as any[];
-                            for (let d = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8; d <= 8; d = (d + 1) as any) {
-                              opts.push(<option key={d} value={d}>{label(d)}</option>);
-                            }
-                            return opts;
-                          })()}
-                        </select>
-                      </span>
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Coordinate step (approx.)</label>
+                    </div>
+                    <AnimatedSelect<string>
+                      className="mt-1"
+                      value={String(precisionDrop)}
+                      onChange={(v) => onChangePrecisionDrop?.(Number(v) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8)}
+                      disabled={!shareUrl}
+                      options={(() => {
+                        const e = typeof scaleExp === "number" ? scaleExp : 0;
+                        const label = (drop: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
+                          const step = Math.pow(2, e + drop) / 1000; // Å
+                          // Clean numeric display up to 4 decimals without unnecessary trailing zeros
+                          const fmtNum = (v: number) => {
+                            const s = v.toFixed(4);
+                            return s.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+                          };
+                          const fmt = `${fmtNum(step)} Å`;
+                          const tag = step < 0.01 ? "High" : step < 0.05 ? "Med" : step < 0.2 ? "Low" : "Very low";
+                          return `${fmt} (${tag})`;
+                        };
+                        const arr: { value: string; label: string }[] = [];
+                        for (let d = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8; d <= 8; d = (d + 1) as any) {
+                          arr.push({ value: String(d), label: label(d) });
+                        }
+                        return arr;
+                      })()}
+                    />
                   </div>
                 ) : null}
                 {typeof coarseCoords === "boolean" && onChangeCoarseCoords && typeof precisionDrop === "undefined" ? (
