@@ -55,6 +55,7 @@ const HomePage = () => {
     setInfo(null);
     setError(null);
     setShareState(null);
+    setTitle("");
   }, []);
   const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +67,10 @@ const HomePage = () => {
   } | null>(null);
   const [omitBonds, setOmitBonds] = useState<boolean>(false);
   const [coarseCoords, setCoarseCoords] = useState<boolean>(false);
-  // Decimal precision selector (0..3 digits after decimal)
-  const [decimalDigits, setDecimalDigits] = useState<0 | 1 | 2 | 3>(3);
+  const [useDelta, setUseDelta] = useState<boolean>(false);
+  const [title, setTitle] = useState<string>("");
+  // Coordinate precision: number of LSBs to drop (0..8)
+  const [precisionDrop, setPrecisionDrop] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(0);
 
   const onFileLoaded = useCallback((payload: UploadPayload) => {
     setError(null);
@@ -79,7 +82,9 @@ const HomePage = () => {
       const parsed = parseMolecule(payload.text, payload.format);
       setMolecule(parsed);
       setFormat(payload.format);
-      setFileMeta({ name: payload.file.name, size: payload.file.size });
+  setFileMeta({ name: payload.file.name, size: payload.file.size });
+  // タイトルはデフォルト空欄（ユーザー任意入力）
+  setTitle("");
 
       const large = parsed.atoms.length > LARGE_ATOM_THRESHOLD;
       setStyle({
@@ -108,17 +113,7 @@ const HomePage = () => {
     }
     const id = setTimeout(() => {
       try {
-  // Map decimal digits to precisionDrop (empirical):
-  // 3 digits ≈ 0 bits, 2 digits ≈ 2 bits, 1 digit ≈ 5 bits, 0 digit ≈ 8 bits
-  const precisionDrop = ((): 0 | 2 | 5 | 8 => {
-    switch (decimalDigits) {
-      case 3: return 0;
-      case 2: return 2;
-      case 1: return 5;
-      default: return 8; // 0 digits
-    }
-  })();
-  const { encoded, byteLength, scaleExp } = encodeShareData({ molecule, style, omitBonds, coarseCoords, precisionDrop });
+  const { encoded, byteLength, scaleExp } = encodeShareData({ molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title });
         const origin = typeof window !== "undefined" ? window.location.origin : "";
   const fallbackOrigin = "https://m2go.kfchem.dev";
         const url = buildShareUrl(origin || fallbackOrigin, encoded);
@@ -131,7 +126,7 @@ const HomePage = () => {
       }
     }, 600);
     return () => clearTimeout(id);
-  }, [molecule, style, omitBonds, coarseCoords, decimalDigits]);
+  }, [molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title]);
 
   const headerSubtitle = useMemo(() => {
     if (!molecule || !fileMeta) {
@@ -260,12 +255,16 @@ const HomePage = () => {
               encodedLength={shareState?.encoded.length ?? null}
               payloadBytes={shareState?.byteLength ?? null}
               scaleExp={shareState?.scaleExp}
+                title={title}
+                onChangeTitle={setTitle}
               omitBonds={omitBonds}
               onChangeOmitBonds={setOmitBonds}
               coarseCoords={coarseCoords}
               onChangeCoarseCoords={setCoarseCoords}
-              decimalDigits={decimalDigits}
-              onChangeDecimalDigits={setDecimalDigits}
+                precisionDrop={precisionDrop}
+                onChangePrecisionDrop={setPrecisionDrop}
+                useDelta={useDelta}
+                onChangeUseDelta={setUseDelta}
             />
           </div>
       </div>

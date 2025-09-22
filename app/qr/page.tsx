@@ -53,12 +53,16 @@ const ShareQrPage = () => {
     return parts.join(" | ");
   }, [error, loading, molecule]);
 
-  // Set page title
-  useEffect(() => {
-    if (typeof document !== "undefined") {
-      document.title = `${APP_NAME} — Share`;
-    }
+  // Set page title to include molecule title if present
+  const applyDocTitle = useCallback((t?: string | null) => {
+    if (typeof document === "undefined") return;
+    const titleText = t && t.trim().length > 0 ? `${t}` : `${APP_NAME}`;
+    document.title = titleText;
   }, []);
+
+  useEffect(() => {
+    applyDocTitle(molecule?.title ?? null);
+  }, [applyDocTitle, molecule?.title]);
 
   // Decode from URL hash
   useEffect(() => {
@@ -72,7 +76,9 @@ const ShareQrPage = () => {
         return;
       }
       try {
-        const decoded = decodeShareSegment(payload);
+  const decoded = decodeShareSegment(payload);
+  // Update title ASAP after decode
+  applyDocTitle(decoded.molecule.title ?? null);
         setMolecule(decoded.molecule);
         setStyle({ ...decoded.style });
         setError(null);
@@ -229,6 +235,15 @@ const ShareQrPage = () => {
   return (
     <main className="relative min-h-screen w-screen overflow-hidden bg-white">
       {/* Fullscreen viewer */}
+      {/* Title overlay (top-left) */}
+      {molecule?.title ? (
+        <div className="pointer-events-none fixed left-3 top-3 z-[65]">
+          <div className="pointer-events-auto inline-flex max-w-[70vw] items-center gap-1 rounded-lg bg-white/70 px-2.5 py-1.5 text-sm text-slate-800 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-md">
+            <span className="truncate font-semibold tracking-wide">{molecule.title}</span>
+          </div>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="absolute inset-0 flex items-center justify-center text-slate-500">
           Decoding QR payload...

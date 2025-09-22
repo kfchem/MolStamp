@@ -39,8 +39,11 @@ export type ShareInput = {
   // Rounds to nearest multiple of 2^n while keeping overall scale the same.
   precisionDrop?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   // When false, do not use deltas; write absolute quantized coords for every atom.
-  // Default true to preserve best compression.
+  // Default false for robustness and to avoid long-jump surprises across components.
   useDelta?: boolean;
+  // Optional short title to embed in the compact payload (v7+). Will be sanitized
+  // to a 64-character alphabet and limited to 63 chars to minimize overhead.
+  title?: string;
 };
 
 export type ShareEncodingResult = {
@@ -90,13 +93,43 @@ const ceilLog2 = (n: number): number => {
   return Math.ceil(Math.log2(n));
 };
 
+// 64-char compact title alphabet: [space, '-', 0-9, A-Z, a-z]
+const TITLE_ALPHABET = (() => {
+  const arr: string[] = [' ', '-'];
+  for (let i = 0; i < 10; i++) arr.push(String(i));
+  for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(65 + i));
+  for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(97 + i));
+  return arr;
+})();
+const TITLE_INDEX: Record<string, number> = Object.fromEntries(
+  TITLE_ALPHABET.map((ch, i) => [ch, i])
+);
+const sanitizeTitle = (s: string | undefined | null): string => {
+  if (!s) return "";
+  let out = "";
+  for (const ch of s) {
+    if (ch in TITLE_INDEX) {
+      out += ch;
+    } else {
+      // map common spaces to space; others to '-'
+      if (/\s/.test(ch)) out += ' ';
+      else out += '-';
+    }
+    if (out.length >= 63) break;
+  }
+  // trim excessive spaces/hyphens at ends
+  out = out.replace(/\s{2,}/g, ' ').replace(/^-+/, '').replace(/-+$/, '').trim();
+  return out.slice(0, 63);
+};
+
 export const encodeShareData = ({
   molecule,
   style,
   omitBonds = false,
   coarseCoords = false,
   precisionDrop,
-  useDelta = true,
+  useDelta = false,
+  title,
 }: ShareInput): ShareEncodingResult => {
   // v5 ultra-compact base with BFS reorder; now extend to v6 for variable coord bits
   const atoms = molecule.atoms;
@@ -216,9 +249,11 @@ export const encodeShareData = ({
   }
   const oldToNew = new Array<number>(N);
   for (let ni = 0; ni < N; ni += 1) oldToNew[order[ni]!] = ni;
-  const centredUi = order.map((oi) => centredUi0[oi]!);
-  const centredExact = order.map((oi) => centredExact0[oi]!);
-  const bondsReordered = bonds.map((b) => ({ i: oldToNew[b.i] ?? b.i, j: oldToNew[b.j] ?? b.j, order: b.order }));
+  const centredUi = useDelta ? order.map((oi) => centredUi0[oi]!) : centredUi0.slice();
+  const centredExact = useDelta ? order.map((oi) => centredExact0[oi]!) : centredExact0.slice();
+  const bondsReordered = useDelta
+    ? bonds.map((b) => ({ i: oldToNew[b.i] ?? b.i, j: oldToNew[b.j] ?? b.j, order: b.order }))
+    : bonds.map((b) => ({ i: b.i, j: b.j, order: b.order }));
 
   // Choose power-of-two global scale M = 2^e so that |x/M|*1000 fits in int16 range
   let maxAbs = 0;
@@ -305,12 +340,12 @@ export const encodeShareData = ({
   }
   const coordBits = Math.max(8, Math.min(16, neededBits));
 
-  // Write bitstream (v6)
+  // Write bitstream (v7)
   const w = new BitWriter();
   w.writeUnsigned("Q".charCodeAt(0), 8);
   w.writeUnsigned("R".charCodeAt(0), 8);
   w.writeUnsigned("M".charCodeAt(0), 8);
-  w.writeUnsigned(6, 8);
+  w.writeUnsigned(7, 8);
   w.writeUnsigned(atomCount, 10);
   w.writeUnsigned(bondCount, 12);
   w.writeUnsigned(e, 2);
@@ -323,6 +358,20 @@ export const encodeShareData = ({
   w.writeUnsigned(omitBonds ? 1 : 0, 1);
   w.writeUnsigned(U, 7);
   for (let i = 0; i < U; i += 1) w.writeUnsigned(usedCodes[i], 7);
+
+  // Optional compact title block: flag(1), if 1 then len(6) + len*6-bit chars
+  const titleSan = sanitizeTitle(title ?? molecule.title);
+  if (titleSan && titleSan.length > 0) {
+    w.writeUnsigned(1, 1);
+    w.writeUnsigned(titleSan.length, 6);
+    for (let i = 0; i < titleSan.length; i++) {
+      const ch = titleSan[i]!;
+      const idx = TITLE_INDEX[ch] ?? TITLE_INDEX['-'];
+      w.writeUnsigned(idx, 6);
+    }
+  } else {
+    w.writeUnsigned(0, 1);
+  }
 
   let px = 0, py = 0, pz = 0;
   for (let i = 0; i < atomCount; i += 1) {
@@ -362,10 +411,10 @@ export const encodeShareData = ({
   // Minimal v2-style payload for app state (not transmitted)
   const payload: SharePayload = {
     v: 2,
-  atoms: centredUi,
+    atoms: centredUi,
     bonds: mapBonds(bondsReordered),
     style: { ...style },
-    meta: molecule.title ? { title: molecule.title } : undefined,
+    meta: (titleSan && titleSan.length > 0) ? { title: titleSan } : undefined,
   };
 
   return { encoded, byteLength: compressed.byteLength, payload, scaleExp: e };

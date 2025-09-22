@@ -12,19 +12,24 @@ type CenterIcon = "none" | "brand" | "upload";
 export type QrMakerProps = {
   shareUrl: string | null;
   encodedLength: number | null;
+  title?: string;
+  onChangeTitle?: (v: string) => void;
   omitBonds?: boolean;
   onChangeOmitBonds?: (v: boolean) => void;
   // compressed payload byte length (deflated binary), for diagnostics
   payloadBytes?: number | null;
   coarseCoords?: boolean; // legacy boolean: equals precisionDrop=1
   onChangeCoarseCoords?: (v: boolean) => void;
-  decimalDigits?: 0 | 1 | 2 | 3;
-  onChangeDecimalDigits?: (v: 0 | 1 | 2 | 3) => void;
+  // number of LSBs dropped during quantization (0..8)
+  precisionDrop?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  onChangePrecisionDrop?: (v: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => void;
   // scale exponent e where M = 2^e (for effective step display)
   scaleExp?: number;
+  useDelta?: boolean;
+  onChangeUseDelta?: (v: boolean) => void;
 };
 
-export const QrMaker = ({ shareUrl, encodedLength, omitBonds, onChangeOmitBonds, payloadBytes, coarseCoords, onChangeCoarseCoords, decimalDigits, onChangeDecimalDigits, scaleExp }: QrMakerProps) => {
+export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBonds, onChangeOmitBonds, payloadBytes, coarseCoords, onChangeCoarseCoords, precisionDrop, onChangePrecisionDrop, scaleExp, useDelta, onChangeUseDelta }: QrMakerProps) => {
   const [ecc, setEcc] = useState<ErrorCorrectionLevel>("L");
   const [dotShape, setDotShape] = useState<DotShape>("square");
   const [centerIcon, setCenterIcon] = useState<CenterIcon>("none");
@@ -33,6 +38,16 @@ export const QrMaker = ({ shareUrl, encodedLength, omitBonds, onChangeOmitBonds,
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
   const [pngUrl, setPngUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const sanitizeTitleLocal = useCallback((s: string) => {
+    const allowed = new Set<string>([' ', '-', ...'0123456789', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'abcdefghijklmnopqrstuvwxyz']);
+    let out = '';
+    for (const ch of s) {
+      if (allowed.has(ch)) out += ch; else if (/\s/.test(ch)) out += ' '; else out += '-';
+      if (out.length >= 63) break;
+    }
+    out = out.replace(/\s{2,}/g, ' ').replace(/^-+/, '').replace(/-+$/, '').trim();
+    return out.slice(0, 63);
+  }, []);
 
   const [canEncode, setCanEncode] = useState<boolean>(false);
   const [qrTried, setQrTried] = useState<boolean>(false);
@@ -386,7 +401,7 @@ export const QrMaker = ({ shareUrl, encodedLength, omitBonds, onChangeOmitBonds,
           parts.push(`Base URL: ${fmt(baseBytes)}`);
           const detail = parts.join(" • ");
           if (/code length overflow/i.test(msg)) {
-            setError(`Payload exceeds QR capacity (${detail}). Try Bond omission, reducing decimal precision (e.g., 3→2→1→0), or lowering Error correction.`);
+            setError(`Payload exceeds QR capacity (${detail}). Try Bond omission, increase Coordinate step (e.g., drop bits 0→2→4→6→8), enable Use delta encoding, or lower Error correction.`);
           } else {
             setError(`${msg} (${detail})`);
           }
@@ -567,6 +582,23 @@ export const QrMaker = ({ shareUrl, encodedLength, omitBonds, onChangeOmitBonds,
           <div className={`min-h-0 ${open ? "overflow-visible" : "overflow-hidden"}`}>
             <div className="px-3">
               <div className="py-3 space-y-4">
+                {typeof onChangeTitle === "function" ? (
+                  <div>
+                    <label className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Title</span>
+                      <input
+                        type="text"
+                        className="h-8 w-56 rounded border border-slate-300 px-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none"
+                        placeholder="Optional title"
+                        title="Up to 63 chars; A–Z a–z 0–9 space -"
+                        value={title ?? ""}
+                        onChange={(e) => onChangeTitle?.(sanitizeTitleLocal(e.target.value))}
+                        maxLength={63}
+                        disabled={!shareUrl}
+                      />
+                    </label>
+                  </div>
+                ) : null}
                 {typeof omitBonds === "boolean" && onChangeOmitBonds ? (
                   <div>
                     <label className="flex items-center justify-between">
@@ -584,7 +616,24 @@ export const QrMaker = ({ shareUrl, encodedLength, omitBonds, onChangeOmitBonds,
                     </label>
                   </div>
                 ) : null}
-                {typeof decimalDigits !== "undefined" && onChangeDecimalDigits ? (
+                {typeof useDelta === "boolean" && onChangeUseDelta ? (
+                  <div>
+                    <label className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Use delta encoding</span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-500">often smaller</span>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                          checked={useDelta}
+                          onChange={(e) => onChangeUseDelta?.(e.target.checked)}
+                          disabled={!shareUrl}
+                        />
+                      </span>
+                    </label>
+                  </div>
+                ) : null}
+                {typeof precisionDrop !== "undefined" && onChangePrecisionDrop ? (
                   <div>
                     <label className="flex items-center justify-between">
                       <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Coordinate step</span>
@@ -592,36 +641,30 @@ export const QrMaker = ({ shareUrl, encodedLength, omitBonds, onChangeOmitBonds,
                         <span className="text-[11px] text-slate-500">Å (effective)</span>
                         <select
                           className="h-7 rounded border-slate-300 text-slate-700 text-xs"
-                          value={decimalDigits}
-                          onChange={(e) => onChangeDecimalDigits?.(Number(e.target.value) as 0 | 1 | 2 | 3)}
+                          value={precisionDrop}
+                          onChange={(e) => onChangePrecisionDrop?.(Number(e.target.value) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8)}
                           disabled={!shareUrl}
                         >
                           {(() => {
                             const e = typeof scaleExp === "number" ? scaleExp : 0;
-                            // mapping: decimalDigits -> precisionDrop (0,2,5,8)
-                            const drops: Record<0 | 1 | 2 | 3, number> = { 3: 0, 2: 2, 1: 5, 0: 8 } as const;
-                            const label = (d: 0 | 1 | 2 | 3) => {
-                              const drop = drops[d as 0 | 1 | 2 | 3] ?? 0;
-                              const step = (Math.pow(2, e + drop) / 1000);
-                              // chemistry-friendly short labels
-                              // ~0.001 Å (High), ~0.01 Å (Med), ~0.1 Å (Low), ~0.3 Å (Very low) など
+                            const label = (drop: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
+                              const step = Math.pow(2, e + drop) / 1000; // Å
                               const fmt = step >= 0.1 ? `${step.toFixed(2)} Å` : step >= 0.01 ? `${step.toFixed(3)} Å` : `${step.toFixed(4)} Å`;
                               const tag = step < 0.01 ? "High" : step < 0.05 ? "Med" : step < 0.2 ? "Low" : "Very low";
                               return `${fmt} (${tag})`;
                             };
-                            return [
-                              <option key={3} value={3}>{label(3)}</option>,
-                              <option key={2} value={2}>{label(2)}</option>,
-                              <option key={1} value={1}>{label(1)}</option>,
-                              <option key={0} value={0}>{label(0)}</option>,
-                            ];
+                            const opts = [] as any[];
+                            for (let d = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8; d <= 8; d = (d + 1) as any) {
+                              opts.push(<option key={d} value={d}>{label(d)}</option>);
+                            }
+                            return opts;
                           })()}
                         </select>
                       </span>
                     </label>
                   </div>
                 ) : null}
-                {typeof coarseCoords === "boolean" && onChangeCoarseCoords && typeof decimalDigits === "undefined" ? (
+                {typeof coarseCoords === "boolean" && onChangeCoarseCoords && typeof precisionDrop === "undefined" ? (
                   <div>
                     <label className="flex items-center justify-between">
                       <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Coarser coordinates</span>
