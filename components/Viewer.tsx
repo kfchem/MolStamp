@@ -232,7 +232,7 @@ export const Viewer = ({
     // 現在の姿勢を保持
     orientationQ.current.copy(groupRef.current.quaternion);
     onOrientationChange?.(orientationQ.current.clone());
-  }, [dragging, rotateMode]);
+  }, [dragging, rotateMode, onOrientationChange]);
 
   const endDrag = useCallback((e?: ReactPointerEvent<HTMLDivElement>) => {
     if (e) {
@@ -250,7 +250,7 @@ export const Viewer = ({
     } else {
       onOrientationChange?.(orientationQ.current.clone());
     }
-  }, []);
+  }, [onOrientationChange]);
 
   const onPointerUpOrCancel = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     activePointers.current.delete(e.pointerId);

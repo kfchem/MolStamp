@@ -158,15 +158,9 @@ export const ArPanel = ({
         if (usdz) mv.setAttribute("ios-src", usdz.url);
       } catch {}
 
-      // Fallback: if AR isn't supported, download GLB instead
+      // Fallback: if AR isn't supported, show message only (no download)
       if (typeof mv.canActivateAR !== "undefined" && mv.canActivateAR === false) {
-        const a = document.createElement("a");
-        a.href = builtGlb.url;
-        a.download = "molecule.glb";
-        document.body.append(a);
-        a.click();
-        setTimeout(() => a.remove(), 0);
-        setStatus("AR not supported on this device. Downloaded GLB instead.");
+        setStatus("AR is not supported on this device.");
         return;
       }
 
@@ -176,7 +170,7 @@ export const ArPanel = ({
       console.error(e);
       setStatus((e as Error).message || "Failed to open AR");
     }
-  }, [buildIfNeeded, disabled, glb, source]);
+  }, [buildIfNeeded, disabled, glb, source, usdz]);
 
   const download = useCallback(
     async (kind: "glb" | "usdz") => {

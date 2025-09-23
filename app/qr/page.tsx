@@ -116,7 +116,7 @@ const ShareQrPage = () => {
     // react to hash changes (e.g., when user pastes a new one)
     window.addEventListener("hashchange", processHash);
     return () => window.removeEventListener("hashchange", processHash);
-  }, []);
+  }, [applyDocTitleLater]);
 
   // AR support (hidden model-viewer + exporters)
   type Artifact = { url: string; size: number };
@@ -206,15 +206,9 @@ const ShareQrPage = () => {
       mv.setAttribute("src", built.glb.url);
       mv.setAttribute("ios-src", built.usdz.url);
 
-      // If AR isn't supported, fall back to downloading/opening the GLB
+      // If AR isn't supported, show message only (no download)
       if (typeof mv.canActivateAR !== "undefined" && mv.canActivateAR === false) {
-        const a = document.createElement("a");
-        a.href = built.glb.url;
-        a.download = "molecule.glb";
-        document.body.append(a);
-        a.click();
-        setTimeout(() => a.remove(), 0);
-        setArStatus("AR not supported on this device. Downloaded GLB instead.");
+        setArStatus("AR is not supported on this device.");
         return;
       }
 
@@ -284,7 +278,7 @@ const ShareQrPage = () => {
     } finally {
       setPwBusy(false);
     }
-  }, [applyDocTitle, decodeShareSegmentEncrypted, encPayload, pw, supportsSubtle]);
+  }, [applyDocTitleLater, encPayload, pw, supportsSubtle]);
 
   return (
     <main className="relative min-h-screen w-screen overflow-hidden bg-white">

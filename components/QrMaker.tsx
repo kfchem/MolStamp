@@ -425,7 +425,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
     return () => {
       cancelled = true;
     };
-  }, [shareUrl, ecc, dotShape, centerIcon, uploadedIconUrl]);
+  }, [shareUrl, ecc, dotShape, centerIcon, uploadedIconUrl, encodedLength, payloadBytes]);
 
   const canRender = Boolean(shareUrl && qrTried && canEncode && !error);
 
