@@ -20,8 +20,6 @@ export type QrMakerProps = {
   onChangeOmitBonds?: (v: boolean) => void;
   // compressed payload byte length (deflated binary), for diagnostics
   payloadBytes?: number | null;
-  coarseCoords?: boolean; // legacy boolean: equals precisionDrop=1
-  onChangeCoarseCoords?: (v: boolean) => void;
   // number of LSBs dropped during quantization (0..8)
   precisionDrop?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   onChangePrecisionDrop?: (v: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => void;
@@ -36,7 +34,7 @@ export type QrMakerProps = {
   onChangePassword?: (v: string) => void;
 };
 
-export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBonds, onChangeOmitBonds, payloadBytes, coarseCoords, onChangeCoarseCoords, precisionDrop, onChangePrecisionDrop, scaleExp, useDelta, onChangeUseDelta, encrypt, onChangeEncrypt, password, onChangePassword }: QrMakerProps) => {
+export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBonds, onChangeOmitBonds, payloadBytes, precisionDrop, onChangePrecisionDrop, scaleExp, useDelta, onChangeUseDelta, encrypt, onChangeEncrypt, password, onChangePassword }: QrMakerProps) => {
   const [ecc, setEcc] = useState<ErrorCorrectionLevel>("L");
   const [dotShape, setDotShape] = useState<DotShape>("square");
   const [centerIcon, setCenterIcon] = useState<CenterIcon>("none");
@@ -461,26 +459,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       copiedTimerRef.current = window.setTimeout(() => setCopiedVisible(false), 1200);
       return;
     } catch (e) {
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = shareUrl;
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        const ok = document.execCommand("copy");
-        document.body.removeChild(ta);
-        if (!ok) throw new Error("execCommand failed");
-        setError(null);
-        // show small popup even on fallback
-        setCopiedId((v) => v + 1);
-        setCopiedVisible(true);
-        if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
-        copiedTimerRef.current = window.setTimeout(() => setCopiedVisible(false), 1200);
-      } catch (fallbackErr) {
-        setError((fallbackErr as Error).message || "Failed to copy URL");
-      }
+      setError((e as Error).message || "Failed to copy URL");
     }
   }, [shareUrl]);
 

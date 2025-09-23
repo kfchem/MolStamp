@@ -26,7 +26,6 @@ export type ShareInput = {
   molecule: Molecule;
   style: ShareStyle;
   omitBonds?: boolean;
-  coarseCoords?: boolean;
   precisionDrop?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   useDelta?: boolean;
   title?: string;
@@ -91,7 +90,6 @@ const buildInnerBitstream = (
   molecule: Molecule,
   style: ShareStyle,
   omitBonds: boolean,
-  coarseCoords: boolean,
   precisionDrop: ShareInput["precisionDrop"],
   useDelta: boolean,
   title?: string,
@@ -252,7 +250,7 @@ const buildInnerBitstream = (
   const quality2 = qualityMap[style.quality] ?? 2;
 
   // Quantization with precision drop
-  const dropBits0 = Math.max(0, Math.min(8, precisionDrop ?? (coarseCoords ? 1 : 0)));
+  const dropBits0 = Math.max(0, Math.min(8, precisionDrop ?? 0));
   const clamp16 = (v: number) => Math.max(-32768, Math.min(32767, v));
   const step0 = 1 << dropBits0;
   const intsX = new Int32Array(atomCount);
@@ -375,7 +373,6 @@ export const encodeShareData = ({
   molecule,
   style,
   omitBonds = false,
-  coarseCoords = false,
   precisionDrop,
   useDelta = false,
   title,
@@ -384,7 +381,6 @@ export const encodeShareData = ({
     molecule,
     style,
     omitBonds,
-    coarseCoords,
     precisionDrop,
     useDelta,
     title,
@@ -410,7 +406,6 @@ export const encodeShareDataEncrypted = async ({
   molecule,
   style,
   omitBonds = false,
-  coarseCoords = false,
   precisionDrop,
   useDelta = false,
   title,
@@ -420,7 +415,6 @@ export const encodeShareDataEncrypted = async ({
     molecule,
     style,
     omitBonds,
-    coarseCoords,
     precisionDrop,
     useDelta,
     title,

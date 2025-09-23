@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { Molecule, StyleSettings } from "../chem/types";
-import { getCpkColor } from "../chem/atomicData";
-import { getVdwRadius } from "../chem/atomUtils";
+import { getVdwRadius, getColor } from "../chem/atomUtils";
 
 const QUALITY_SEGMENTS = {
   low: { sphereWidth: 8, sphereHeight: 8, cylinder: 6 },
@@ -138,7 +137,7 @@ export const buildMoleculeMesh = (
       matrix.compose(position, quaternion, scale);
       atomMesh.setMatrixAt(index, matrix);
 
-      atomColor.set(getCpkColor(atom.symbol));
+  atomColor.set(getColor(atom.symbol));
       atomMesh.setColorAt(index, atomColor);
     });
     atomMesh.instanceMatrix.needsUpdate = true;

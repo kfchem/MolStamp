@@ -68,7 +68,6 @@ const HomePage = () => {
     scaleExp: number;
   } | null>(null);
   const [omitBonds, setOmitBonds] = useState<boolean>(false);
-  const [coarseCoords, setCoarseCoords] = useState<boolean>(false);
   const [useDelta, setUseDelta] = useState<boolean>(false);
   const [title, setTitle] = useState<string>("");
   const [encrypt, setEncrypt] = useState<boolean>(false);
@@ -151,8 +150,8 @@ const HomePage = () => {
           }
         }
         const { encoded, byteLength, scaleExp } = useEnc
-          ? await encodeShareDataEncrypted({ molecule: molForShare, style, omitBonds, coarseCoords, precisionDrop, useDelta, title, password: password.trim() })
-          : encodeShareData({ molecule: molForShare, style, omitBonds, coarseCoords, precisionDrop, useDelta, title });
+          ? await encodeShareDataEncrypted({ molecule: molForShare, style, omitBonds, precisionDrop, useDelta, title, password: password.trim() })
+          : encodeShareData({ molecule: molForShare, style, omitBonds, precisionDrop, useDelta, title });
         const origin = typeof window !== "undefined" ? window.location.origin : "";
   const fallbackOrigin = "https://m2go.kfchem.dev";
         const url = buildShareUrl(origin || fallbackOrigin, encoded);
@@ -165,7 +164,7 @@ const HomePage = () => {
       }
     }, 600);
     return () => clearTimeout(id);
-  }, [molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title, encrypt, password, orientationQ]);
+  }, [molecule, style, omitBonds, precisionDrop, useDelta, title, encrypt, password, orientationQ]);
 
   const headerSubtitle = useMemo(() => {
     if (!molecule || !fileMeta) {
@@ -316,8 +315,6 @@ const HomePage = () => {
                 onChangeTitle={setTitle}
               omitBonds={omitBonds}
               onChangeOmitBonds={setOmitBonds}
-              coarseCoords={coarseCoords}
-              onChangeCoarseCoords={setCoarseCoords}
                 precisionDrop={precisionDrop}
                 onChangePrecisionDrop={setPrecisionDrop}
                 useDelta={useDelta}

@@ -19,14 +19,6 @@ export const Z_INDEXED_SYMBOLS: string[] = (() => {
   return arr;
 })();
 
-// レガシー(v3)用: 既存のアルファベット順配列を固定テーブル化
-export const LEGACY_ALPHABETICAL_TABLE: string[] = (() => {
-  const list = elements.map((e) => e.symbol).slice(0, 128);
-  if (!list.includes("C")) list[0] = "C";
-  while (list.length < 128) list.push("X");
-  return list;
-})();
-
 // symbol -> Z（未知は6=Carbonにフォールバック）
 const SYMBOL_TO_Z = (() => {
   const map = new Map<string, number>();
@@ -51,11 +43,6 @@ export const symbolToZ = (symbol: string): number => {
 // v4 で使用: Zコードからシンボル
 export const zToSymbol = (code: number): string => {
   return Z_INDEXED_SYMBOLS[code] ?? "C";
-};
-
-// v3 互換: レガシー表のコード->シンボル
-export const codeToSymbolLegacy = (code: number): string => {
-  return LEGACY_ALPHABETICAL_TABLE[code] ?? "C";
 };
 
 // 既存インポートの後方互換: v4 のZベースAPIにエイリアス
