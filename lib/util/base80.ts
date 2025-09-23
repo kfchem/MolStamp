@@ -18,7 +18,6 @@ const CHAR_TO_VAL: Record<string, number> = (() => {
   return map;
 })();
 
-export const BASE80_ALPHABET = ALPHABET;
 
 /**
  * Encode bytes into Base80 string (minimal length, preserves leading 0x00 as leading '0').

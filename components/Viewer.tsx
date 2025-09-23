@@ -8,7 +8,6 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { CameraControls } from "@react-three/drei";
 import * as THREE from "three";
 import { Molecule, StyleSettings } from "@/lib/chem/types";
-import { PLUS_NAME, PLUS_URL } from "@/lib/branding";
 import { buildMoleculeMesh } from "@/lib/three/buildMeshes";
 
 const fallbackStyle: StyleSettings = {

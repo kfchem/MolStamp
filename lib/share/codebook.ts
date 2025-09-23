@@ -1,8 +1,8 @@
 import { elements } from "../chem/atomUtils";
 
 // v4 用: コード=原子番号(Z)。範囲は 1..118 を想定（7bit に収まる）。
-// Z_INDEXED_SYMBOLS[Z] = symbol。未知コードや0にはフォールバックで"C"。
-export const Z_INDEXED_SYMBOLS: string[] = (() => {
+// 内部: Z_INDEXED_SYMBOLS[Z] = symbol。未知コードや0にはフォールバックで"C"。
+const Z_INDEXED_SYMBOLS: string[] = (() => {
   const arr = new Array<string>(128).fill("X");
   // 原子番号からシンボルへ
   for (const e of elements) {
@@ -33,18 +33,13 @@ const SYMBOL_TO_Z = (() => {
   return map;
 })();
 
-// v4 で使用: Zコードへ変換
-export const symbolToZ = (symbol: string): number => {
+// 公開 API（現行の使用箇所に合わせて最小限）
+export const symbolToCode = (symbol: string): number => {
   const s = symbol.trim();
   const key = s.length === 1 ? s.toUpperCase() : s[0].toUpperCase() + s.slice(1).toLowerCase();
   return SYMBOL_TO_Z.get(key) ?? 6; // fallback Carbon(Z=6)
 };
 
-// v4 で使用: Zコードからシンボル
-export const zToSymbol = (code: number): string => {
+export const codeToSymbol = (code: number): string => {
   return Z_INDEXED_SYMBOLS[code] ?? "C";
 };
-
-// 既存インポートの後方互換: v4 のZベースAPIにエイリアス
-export const symbolToCode = symbolToZ;
-export const codeToSymbol = zToSymbol;
