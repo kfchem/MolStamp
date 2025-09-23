@@ -634,7 +634,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                     <input
                       type="text"
                       className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60 placeholder:text-slate-400"
-                      placeholder="Optional title"
+                      placeholder="Optional"
                       title="Up to 63 chars; A–Z a–z 0–9 space -"
                       value={title ?? ""}
                       onChange={(e) => onChangeTitle?.(sanitizeTitleLocal(e.target.value))}
@@ -732,7 +732,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                       <input
                         type="password"
                         className={`w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60 placeholder:text-slate-400 ${encShake ? "border-rose-500 bg-rose-50" : "border-slate-200"}`}
-                        placeholder={"Password (min 4 chars)"}
+                        placeholder={"Password"}
                         value={password ?? ""}
                         onChange={(e) => onChangePassword?.(e.target.value)}
                         disabled={!shareUrl}
