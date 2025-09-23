@@ -390,7 +390,7 @@ export const encodeShareData = ({
   return { encoded, byteLength: out.byteLength, payload, scaleExp };
 };
 
-export const buildShareUrl = (_origin: string, encoded: string): string => {
+export const buildShareUrl = (encoded: string): string => {
   const base = SHARE_BASE_URL.replace(/\/$/, "");
   return `${base}/qr#${encoded}`;
 };

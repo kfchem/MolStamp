@@ -139,12 +139,10 @@ const HomePage = () => {
             throw new Error("Encryption requires Web Crypto (HTTPS). Disable encryption or open this page over HTTPS.");
           }
         }
-        const { encoded, byteLength, scaleExp } = useEnc
+    const { encoded, byteLength, scaleExp } = useEnc
           ? await encodeShareDataEncrypted({ molecule: molForShare, style, omitBonds, precisionDrop, useDelta, title, password: password.trim() })
           : encodeShareData({ molecule: molForShare, style, omitBonds, precisionDrop, useDelta, title });
-        const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const fallbackOrigin = "https://m2go.kfchem.dev";
-        const url = buildShareUrl(origin || fallbackOrigin, encoded);
+    const url = buildShareUrl(encoded);
   setShareState({ encoded, byteLength, url, scaleExp });
         setError(null);
       } catch (e) {
