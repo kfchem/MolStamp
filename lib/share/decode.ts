@@ -41,7 +41,6 @@ export type DecodedShare = {
 };
 
 export const decodeShareSegment = (segment: string): DecodedShare => {
-  // MTG専用: Base80のみを許可
   let bytes: Uint8Array;
   try { bytes = fromBase80(segment); } catch { throw new Error("Invalid Base80 segment"); }
 
@@ -54,7 +53,7 @@ export const decodeShareSegment = (segment: string): DecodedShare => {
     if (magic3 === "MTG" && ver === 1) {
       const enc = (flags & 0x01) !== 0;
       if (!enc) {
-        // Unencrypted: inflate body after 4 bytes
+        // Unencrypted: inflate body after header (4 bytes)
         const raw = inflate(bytes.subarray(4));
         const u8 = new Uint8Array(raw);
         const r = new BitReader(u8);
@@ -139,8 +138,6 @@ export const decodeShareSegment = (segment: string): DecodedShare => {
       }
     }
   }
-
-  // ここまで来たらMTG以外の形式
   throw new Error("Unsupported segment: MTG v1 only");
 };
 
@@ -148,7 +145,6 @@ export const decodeShareSegmentEncrypted = async (
   segment: string,
   password: string,
 ): Promise<DecodedShare> => {
-  // Base80 decode (MTG専用)
   let bytes: Uint8Array;
   try { bytes = fromBase80(segment); } catch { throw new Error("Invalid Base80 segment"); }
   if (bytes.byteLength < 4) throw new Error("Invalid segment");
@@ -159,7 +155,6 @@ export const decodeShareSegmentEncrypted = async (
   if (magic3 !== "MTG" || ver !== 1 || (flags & 0x01) === 0) {
     throw new Error("Not an encrypted MT v1 segment");
   }
-  // Fixed sizes: salt(16), iv(12), ct(rest)
   if (bytes.byteLength < 4 + 16 + 12 + 16) {
     throw new Error("Encrypted segment too short");
   }
@@ -178,7 +173,6 @@ export const decodeShareSegmentEncrypted = async (
     }
     throw err;
   }
-  // Decrypted bytes are deflate-compressed inner bitstream; inflate first
   const inflated = inflate(plain);
   const u8 = new Uint8Array(inflated);
   const r = new BitReader(u8);

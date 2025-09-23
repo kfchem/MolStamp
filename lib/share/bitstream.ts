@@ -1,11 +1,11 @@
 export class BitWriter {
   private bytes: number[] = [];
   private current = 0;
-  private bitPos = 0; // 0..7
+  private bitPos = 0;
 
   writeBits(value: number, bits: number): void {
     if (bits <= 0) return;
-    // Write from MSB to LSB of the "bits"-wide value
+  // Write MSB-first within the given width
     for (let i = bits - 1; i >= 0; i -= 1) {
       const bit = (value >>> i) & 1;
       this.current = (this.current << 1) | bit;
@@ -54,8 +54,8 @@ export class BitWriter {
 }
 
 export class BitReader {
-  private offset = 0; // byte index
-  private bitPos = 0; // 0..7
+  private offset = 0;
+  private bitPos = 0;
   constructor(private readonly data: Uint8Array) {}
 
   readBits(bits: number): number {
@@ -83,7 +83,7 @@ export class BitReader {
 
   readSigned(bits: number): number {
     const v = this.readBits(bits);
-    // interpret two's complement
+  // interpret two's complement
     const signBit = 1 << (bits - 1);
     if (v & signBit) {
       return v - (1 << bits);

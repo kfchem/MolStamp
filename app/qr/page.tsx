@@ -60,13 +60,11 @@ const ShareQrPage = () => {
     return parts.join(" | ");
   }, [error, loading, molecule]);
 
-  // Set page title to include molecule title if present
   const applyDocTitle = useCallback((t?: string | null) => {
     if (typeof document === "undefined") return;
     const titleText = t && t.trim().length > 0 ? `${t}` : `${APP_NAME}`;
     document.title = titleText;
   }, []);
-  // Delayed title application to avoid race with initial load/hydration
   const applyDocTitleLater = useCallback((t?: string | null, delay = 220) => {
     if (typeof window === "undefined") return;
     const id = window.setTimeout(() => applyDocTitle(t ?? null), Math.max(0, delay));
@@ -78,7 +76,6 @@ const ShareQrPage = () => {
     return () => { if (typeof cancel === 'function') cancel(); };
   }, [applyDocTitleLater, molecule?.title]);
 
-  // Decode from URL hash
   useEffect(() => {
     const processHash = () => {
       const hash = typeof window !== "undefined" ? window.location.hash : "";
@@ -113,12 +110,10 @@ const ShareQrPage = () => {
     };
 
     processHash();
-    // react to hash changes (e.g., when user pastes a new one)
     window.addEventListener("hashchange", processHash);
     return () => window.removeEventListener("hashchange", processHash);
   }, [applyDocTitleLater]);
 
-  // AR support (hidden model-viewer + exporters)
   type Artifact = { url: string; size: number };
   const [glb, setGlb] = useState<Artifact | null>(null);
   const [usdz, setUsdz] = useState<Artifact | null>(null);
@@ -138,11 +133,9 @@ const ShareQrPage = () => {
   const rebuildArtifacts = useCallback(async () => {
     if (!viewerGroup) return null;
     try {
-      // Revoke previous blob URLs to avoid leaks
       if (glb) URL.revokeObjectURL(glb.url);
       if (usdz) URL.revokeObjectURL(usdz.url);
 
-      // Lazy-load heavy exporters only when needed
       const [{ prepareSceneForExport }, { exportGlb }, { exportUsdz }] = await Promise.all([
         import("@/lib/export/prepareScene"),
         import("@/lib/export/exportGlb"),
@@ -160,7 +153,6 @@ const ShareQrPage = () => {
       const newUsdz = { url: usdzUrl, size: usdzBlob.size } as Artifact;
       setUsdz(newUsdz);
 
-      // Also update the hidden model-viewer element immediately
       if (mvRef.current) {
         try {
           (mvRef.current as any).setAttribute("src", glbUrl);
@@ -183,7 +175,6 @@ const ShareQrPage = () => {
     try {
       setArStatus(null);
       setArExporting(true);
-      // Defer model-viewer attachment until first AR attempt
       if (!isiOS && !mvReady) setMvReady(true);
       const built = await rebuildArtifacts();
       if (!built) throw new Error("Failed to build AR artifacts");
@@ -202,17 +193,14 @@ const ShareQrPage = () => {
   const mv: any = mvRef.current;
       if (!mv) throw new Error("AR viewer not ready");
 
-      // Ensure attributes are set on the element
       mv.setAttribute("src", built.glb.url);
       mv.setAttribute("ios-src", built.usdz.url);
 
-      // If AR isn't supported, show message only (no download)
       if (typeof mv.canActivateAR !== "undefined" && mv.canActivateAR === false) {
         setArStatus("AR is not supported on this device.");
         return;
       }
 
-      // Try to activate AR (WebXR / Scene Viewer if available)
       mv.activateAR?.();
     } catch (e) {
       console.error(e);
@@ -222,7 +210,6 @@ const ShareQrPage = () => {
     }
   }, [rebuildArtifacts, viewerGroup, mvReady]);
 
-  // Close on outside click or Escape
   useEffect(() => {
     const onDocMouseDown = (e: MouseEvent) => {
       if (!optionsOpen) return;
@@ -282,7 +269,6 @@ const ShareQrPage = () => {
 
   return (
     <main className="relative min-h-screen w-screen overflow-hidden bg-white">
-      {/* Password overlay for encrypted payloads (simplified + motion) */}
       <AnimatePresence>
         {encPayload ? (
           <motion.div
@@ -346,8 +332,6 @@ const ShareQrPage = () => {
           </motion.div>
         ) : null}
       </AnimatePresence>
-      {/* Fullscreen viewer */}
-      {/* Title overlay (top-left) */}
       {molecule?.title ? (
         <div className="pointer-events-none fixed left-3 top-3 z-[65]">
           <div className="pointer-events-auto inline-flex max-w-[70vw] items-center gap-1 rounded-lg bg-white/70 px-2.5 py-1.5 text-sm text-slate-800 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-md">
@@ -369,9 +353,7 @@ const ShareQrPage = () => {
         />
       )}
 
-  {/* Options floating button (top-right) */}
   <div className="pointer-events-none fixed inset-0 z-[60]" style={{
-        // Provide fallbacks for non-iOS or older browsers
         paddingTop: "max(0px, env(safe-area-inset-top))",
         paddingRight: "max(0px, env(safe-area-inset-right))",
         paddingBottom: "max(0px, env(safe-area-inset-bottom))",
@@ -403,7 +385,6 @@ const ShareQrPage = () => {
           </button>
         </div>
  
-         {/* Open AR floating button (bottom-center) */}
          <div className="pointer-events-auto fixed left-1/2 -translate-x-1/2" style={{ bottom: "calc(env(safe-area-inset-bottom) + 2.25rem)" }}>
            <button
              type="button"
@@ -421,7 +402,6 @@ const ShareQrPage = () => {
            </button>
          </div>
  
-         {/* Powered by (bottom-right) – more subtle; link to project */}
          <div className="pointer-events-none fixed select-none text-[10px] text-slate-400" style={{ right: "max(0.5rem, env(safe-area-inset-right))", bottom: "max(0.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))" }}>
            <div className="pointer-events-auto inline-flex items-center gap-1 rounded-md bg-white/50 px-1.5 py-0.5 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm">
              <span className="opacity-80">Powered by</span>
@@ -437,8 +417,6 @@ const ShareQrPage = () => {
          </div>
        </div>
 
-      {/* Options Overlay */}
-      {/* Compact popover near top-right: place OptionsPanel as-is (no extra frame/header) */}
       <div
         ref={popoverRef}
         className={
@@ -453,11 +431,9 @@ const ShareQrPage = () => {
         aria-label="Rendering Options"
         aria-hidden={!optionsOpen}
       >
-        {/* Place OptionsPanel as-is so its dropdowns can overflow; avoid clipping */}
         <OptionsPanel value={style} onChange={setStyle} disabled={!molecule} />
       </div>
 
-      {/* Hidden model-viewer for AR activation (non-iOS), mount on demand */}
       {mvReady ? (
         <ModelViewer
           ref={mvRef as any}

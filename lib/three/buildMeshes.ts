@@ -37,7 +37,6 @@ export const buildMoleculeMesh = (
   const createAtomMaterial = () => {
     switch (style.material) {
       case "metal":
-        // 強い金属感 + 明るさ（環境マップ無しでも暗くなりすぎない）
         return new THREE.MeshPhysicalMaterial({
           color: 0xffffff,
           metalness: 0.5,
@@ -46,10 +45,8 @@ export const buildMoleculeMesh = (
           clearcoatRoughness: 0.1,
         });
       case "toon":
-        // くっきりした陰影
         return new THREE.MeshToonMaterial({ color: 0xffffff });
       case "glass":
-        // 透過 + 物質感（減衰と厚みでボリュームを出す）
         return new THREE.MeshPhysicalMaterial({
           color: 0xffffff,
           metalness: 0.0,
@@ -66,7 +63,6 @@ export const buildMoleculeMesh = (
         });
       case "standard":
       default:
-        // 標準: ややマット
         return new THREE.MeshStandardMaterial({
           color: 0xffffff,
           metalness: 0.05,
@@ -98,7 +94,7 @@ export const buildMoleculeMesh = (
           ior: 1.5,
           transparent: true,
           opacity: 0.7,
-          depthWrite: true, // キャップが透けて見えないように
+          depthWrite: true,
           side: THREE.FrontSide,
         });
       case "standard":
@@ -111,7 +107,7 @@ export const buildMoleculeMesh = (
     }
   };
 
-  // Atoms (skip entirely if atomScale = 0)
+  // Atoms (skip if atomScale = 0)
   if (style.atomScale > 0) {
     const atomGeometry = new THREE.SphereGeometry(
     1,
@@ -146,9 +142,9 @@ export const buildMoleculeMesh = (
     instancedMeshes.push(atomMesh);
   }
 
-  // Bonds: render as two half-cylinders that stop at atom surfaces
+  // Bonds: two half-cylinders that stop at atom surfaces
   if (bonds.length > 0 && style.bondRadius > 0) {
-    // Cylinder of unit height centered at origin, oriented along +Y.
+  // Unit cylinder oriented along +Y.
     const bondGeometry = new THREE.CylinderGeometry(
       1,
       1,
@@ -159,7 +155,7 @@ export const buildMoleculeMesh = (
     );
     const bondMaterial = createBondMaterial();
 
-    // Allocate up to 2 instances per bond; we'll set the actual count after placement
+    // Up to 2 instances per bond; set count after placement
     const bondMesh = new THREE.InstancedMesh(
       bondGeometry,
       bondMaterial,
@@ -181,20 +177,20 @@ export const buildMoleculeMesh = (
     const dirNorm = direction.clone().normalize();
     const rA = (getVdwRadius(a.symbol) ?? 1.5) * style.atomScale;
     const rB = (getVdwRadius(b.symbol) ?? 1.5) * style.atomScale;
-    // Slightly overlap bonds into atoms to avoid tiny visual gaps due to precision/shading
+  // Slightly overlap into atoms to avoid tiny gaps
     const capInset = Math.min(0.06, Math.max(0.02, style.bondRadius * 0.75));
     const rAe = Math.max(0, rA - capInset);
     const rBe = Math.max(0, rB - capInset);
     const innerLength = fullLength - (rAe + rBe);
 
-      // If atoms overlap or touch, skip rendering this bond
+  // If atoms overlap or touch, skip
       if (innerLength <= 1e-3) return;
 
   const halfSpan = innerLength * 0.5; // total length of each half cylinder
       const halfHalf = halfSpan * 0.5; // distance from center of half cylinder to its end
       quaternion.setFromUnitVectors(axisY, dirNorm);
 
-      // Half from A side: center at rA + quarter of inner length
+      // Half from A
       const centerA = new THREE.Vector3()
         .copy(position)
         .addScaledVector(dirNorm, rAe + halfHalf);
@@ -202,7 +198,7 @@ export const buildMoleculeMesh = (
       matrix.compose(centerA, quaternion, scale);
       bondMesh.setMatrixAt(instanceIndex++, matrix);
 
-      // Half from B side: center at rB + quarter of inner length from B
+      // Half from B
       const centerB = new THREE.Vector3()
         .copy(target)
         .addScaledVector(dirNorm, -rBe - halfHalf);
@@ -210,7 +206,7 @@ export const buildMoleculeMesh = (
       bondMesh.setMatrixAt(instanceIndex++, matrix);
     });
 
-    // Update the actual instance count to what we used
+  // Update instance count
     bondMesh.count = instanceIndex;
     bondMesh.instanceMatrix.needsUpdate = true;
     group.add(bondMesh);

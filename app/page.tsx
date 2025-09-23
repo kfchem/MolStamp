@@ -72,9 +72,7 @@ const HomePage = () => {
   const [title, setTitle] = useState<string>("");
   const [encrypt, setEncrypt] = useState<boolean>(false);
   const [password, setPassword] = useState<string>("");
-  // Viewer の向き（Quaternion）を保持し、QR エンコード時に焼き込む
   const [orientationQ, setOrientationQ] = useState<THREE.Quaternion | null>(null);
-  // Coordinate precision: number of LSBs to drop (0..8)
   const [precisionDrop, setPrecisionDrop] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(0);
 
   const onFileLoaded = useCallback((payload: UploadPayload) => {
@@ -89,12 +87,8 @@ const HomePage = () => {
       setMolecule(parsed);
       setFormat(payload.format);
   setFileMeta({ name: payload.file.name, size: payload.file.size });
-  // タイトルはデフォルト空欄（ユーザー任意入力）
   setTitle("");
 
-      // 入力形式に応じて Bond data の既定を切り替え
-      // XYZ: ファイルに結合情報がないため自動生成（omitBonds=true）
-      // SDF: 結合データを含むためそのまま含める（omitBonds=false）
       if (payload.format === "xyz") {
         setOmitBonds(true);
       } else {
@@ -120,7 +114,6 @@ const HomePage = () => {
     }
   }, []);
 
-  // アップロード済み&スタイル変更時に自動でQR用URLを生成（デバウンスで負荷軽減）
   useEffect(() => {
     if (!molecule) {
       setShareState(null);
@@ -128,13 +121,10 @@ const HomePage = () => {
     }
     const id = setTimeout(async () => {
       try {
-        // 必要に応じて現在の向きを焼き込んだ座標で共有
         const molForShare: Molecule = (() => {
           if (!molecule) return molecule as any;
           if (!orientationQ) return molecule;
           const inv = orientationQ.clone();
-          // 共有上は現在見えている向きを "正面" として固定化するため、
-          // モデル自体にその回転を適用して座標を書き換える
           const m = new THREE.Matrix4().makeRotationFromQuaternion(inv);
           const atoms = molecule.atoms.map((a) => {
             const v = new THREE.Vector3(a.x, a.y, a.z).applyMatrix4(m);
@@ -238,7 +228,6 @@ const HomePage = () => {
               disabled={!molecule}
               className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {/* Reset icon */}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20 10a8 8 0 0 0-14-4M4 14a8 8 0 0 0 14 4" />
@@ -252,7 +241,6 @@ const HomePage = () => {
                 aria-label="Open GitHub repository"
                 className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
               >
-                {/* GitHub icon */}
                 <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
                   <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.486 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.091.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.605-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.607.069-.607 1.004.07 1.532 1.032 1.532 1.032.893 1.53 2.341 1.088 2.91.833.091-.647.35-1.088.636-1.339-2.221-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.378.202 2.397.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.337 4.695-4.566 4.944.359.31.679.919.679 1.852 0 1.336-.012 2.414-.012 2.742 0 .267.18.577.688.479A10.02 10.02 0 0 0 22 12.017C22 6.486 17.523 2 12 2z" />
                 </svg>
@@ -263,7 +251,6 @@ const HomePage = () => {
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4 min-w-0">
-          {/* プレビューとドロップ枠を統合 */}
           <UploadDropzone
             variant="overlay"
             onFileLoaded={onFileLoaded}
@@ -281,8 +268,6 @@ const HomePage = () => {
               className="h-[50vh] min-h-[340px]"
             />
           </UploadDropzone>
-
-          {/* 左カラム: オプションのみ（ARは右カラムへ） */}
           <OptionsPanel value={style} onChange={setStyle} disabled={!molecule} />
 
           {info ? (
@@ -303,7 +288,6 @@ const HomePage = () => {
           ) : null}
         </div>
 
-        {/* 右カラム: AR → QR の順に配置 */}
           <div className="space-y-4 lg:sticky lg:top-6 min-w-0">
             <ArPanel source={viewerGroup} disabled={!molecule} showOpenAr showSizes={false} />
             <QrMaker

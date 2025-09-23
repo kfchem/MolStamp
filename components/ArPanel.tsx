@@ -10,11 +10,8 @@ import { prepareSceneForExport } from "@/lib/export/prepareScene";
 export type ArPanelProps = {
   source: THREE.Group | null;
   disabled?: boolean;
-  /** コンパクト表示（ヘッダー簡略化・余白小さめ） */
   compact?: boolean;
-  /** Open ARボタンを表示するか（トップページでは非表示） */
   showOpenAr?: boolean;
-  /** サイズ表示を出すか（トップページでは非表示） */
   showSizes?: boolean;
 };
 
@@ -34,7 +31,6 @@ type ModelViewerProps = DetailedHTMLProps<
   "camera-controls"?: boolean | "true" | "false";
   autoplay?: boolean | "true" | "false";
 };
-// Use `any` to allow refs/methods like activateAR on the custom element
 const ModelViewer: any = "model-viewer" as unknown as (
   props: ModelViewerProps
 ) => ReactElement;
@@ -129,7 +125,6 @@ export const ArPanel = ({
     try {
       setStatus(null);
       if (isiOS) {
-        // iOS は Quick Look を使用。確実にUSDZを用意し、rel="ar" のアンカーで起動。
         const art = await buildIfNeeded("usdz");
         const url = art?.url;
         if (!url) throw new Error("USDZ not available for AR");
@@ -137,34 +132,28 @@ export const ArPanel = ({
         const anchor = document.createElement("a");
         anchor.setAttribute("rel", "ar");
         anchor.href = url;
-        // iOS ではアンカー要素がDOMにある方が安定
         document.body.append(anchor);
         anchor.click();
-        // 直後に消す
         setTimeout(() => anchor.remove(), 0);
         return;
       }
 
-      // iOS以外は model-viewer の activateAR に委譲（Scene Viewer / WebXR）
       const builtGlb = glb ?? (await buildIfNeeded("glb"));
       if (!builtGlb) throw new Error("GLB not available for AR");
 
       const mv: any = mvRef.current;
       if (!mv) throw new Error("AR viewer not ready");
 
-      // Ensure attributes are set on the element
       try {
         mv.setAttribute("src", builtGlb.url);
         if (usdz) mv.setAttribute("ios-src", usdz.url);
       } catch {}
 
-      // Fallback: if AR isn't supported, show message only (no download)
       if (typeof mv.canActivateAR !== "undefined" && mv.canActivateAR === false) {
         setStatus("AR is not supported on this device.");
         return;
       }
 
-      // Try to activate AR (WebXR / Scene Viewer if available)
       mv.activateAR?.();
     } catch (e) {
       console.error(e);
@@ -244,7 +233,6 @@ export const ArPanel = ({
         </div>
       ) : null}
 
-      {/* 非表示のmodel-viewer（AR起動にのみ使用） */}
       {isMounted ? (
         <ModelViewer
           ref={mvRef as any}

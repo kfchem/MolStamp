@@ -115,7 +115,6 @@ const buildInnerBitstream = (
     return exact;
   });
 
-  // Build adjacency
   const N = centredExact0.length;
   const adj: number[][] = Array.from({ length: N }, () => []);
   for (const b of bonds) {
@@ -210,7 +209,6 @@ const buildInnerBitstream = (
     ? bonds.map((b) => ({ i: oldToNew[b.i] ?? b.i, j: oldToNew[b.j] ?? b.j, order: b.order }))
     : bonds.map((b) => ({ i: b.i, j: b.j, order: b.order }));
 
-  // Choose scale exponent e
   let maxAbs = 0;
   for (const a of centredExact) {
     maxAbs = Math.max(maxAbs, Math.abs(a[1]), Math.abs(a[2]), Math.abs(a[3]));
@@ -220,7 +218,6 @@ const buildInnerBitstream = (
   while (e < 3 && (1 << e) < need) e += 1;
   let M = 1 << e;
 
-  // Dictionary
   const usedCodes: number[] = [];
   const codeIndex = new Map<number, number>();
   for (const a of centredExact) {
@@ -239,7 +236,6 @@ const buildInnerBitstream = (
   const bondCount = omitBonds ? 0 : rawBondCount;
   const indexBits = Math.max(1, ceilLog2(atomCount));
 
-  // style packing
   const materialMap: Record<StyleSettings["material"], number> = {
     standard: 0, metal: 1, toon: 2, glass: 3,
   };
@@ -249,7 +245,6 @@ const buildInnerBitstream = (
   const qualityMap: Record<StyleSettings["quality"], number> = { low: 0, medium: 1, high: 2, ultra: 3 };
   const quality2 = qualityMap[style.quality] ?? 2;
 
-  // Quantization with precision drop
   const dropBits0 = Math.max(0, Math.min(8, precisionDrop ?? 0));
   const clamp16 = (v: number) => Math.max(-32768, Math.min(32767, v));
   const step0 = 1 << dropBits0;
@@ -294,11 +289,10 @@ const buildInnerBitstream = (
   const coordBits = Math.max(8, Math.min(16, neededBits));
 
   const w = new BitWriter();
-  // v1 header (inner bitstream) layout (no magic):
-  // [atomCount:10][bondCount:12][scaleExp e:2][coordBitsMinus8:4]
+  // Inner layout v1 (no magic):
+  // [atomCount:10][bondCount:12][e:2][coordBits-8:4]
   // [material2:2][atomScaleQ6:6][bondRadiusQ6:6][quality2:2]
-  // [deltaFlag:1][omitBondsFlag:1]
-  // [U:7][U*dict(7)]
+  // [delta:1][omitBonds:1][U:7][U*dict(7)]
   w.writeUnsigned(atomCount, 10);
   w.writeUnsigned(bondCount, 12);
   w.writeUnsigned(e, 2);
@@ -312,7 +306,7 @@ const buildInnerBitstream = (
   w.writeUnsigned(U, 7);
   for (let i = 0; i < U; i += 1) w.writeUnsigned(usedCodes[i], 7);
 
-  // Optional compact title block: flag(1), len(6), chars*6
+  // Optional title: flag(1), len(6), chars*6
   const titleSan = sanitizeTitle(title ?? molecule.title);
   if (titleSan && titleSan.length > 0) {
     w.writeUnsigned(1, 1);
@@ -385,8 +379,7 @@ export const encodeShareData = ({
     useDelta,
     title,
   );
-  // MTG envelope v1 (compact): ['M','T','G', (ver<<4)|(flags4)]
-  // flags4: bit0=enc
+  // MTG envelope v1: ['M','T','G', (ver<<4)|(flags4)] where bit0=enc
   const ver = 1;
   const flags4 = 0; // unencrypted
   const header = new Uint8Array(["M".charCodeAt(0), "T".charCodeAt(0), "G".charCodeAt(0), ((ver & 0x0f) << 4) | (flags4 & 0x0f)]);

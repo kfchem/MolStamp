@@ -18,16 +18,12 @@ export type QrMakerProps = {
   onChangeTitle?: (v: string) => void;
   omitBonds?: boolean;
   onChangeOmitBonds?: (v: boolean) => void;
-  // compressed payload byte length (deflated binary), for diagnostics
   payloadBytes?: number | null;
-  // number of LSBs dropped during quantization (0..8)
   precisionDrop?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   onChangePrecisionDrop?: (v: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => void;
-  // scale exponent e where M = 2^e (for effective step display)
   scaleExp?: number;
   useDelta?: boolean;
   onChangeUseDelta?: (v: boolean) => void;
-  // encryption controls
   encrypt?: boolean;
   onChangeEncrypt?: (v: boolean) => void;
   password?: string;
@@ -43,11 +39,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
   const [pngUrl, setPngUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // copy URL toast
   const [copiedVisible, setCopiedVisible] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<number>(0);
   const copiedTimerRef = useRef<number | null>(null);
-  // for encryption toggle invalid attempt shake
   const [encShake, setEncShake] = useState<boolean>(false);
   const sanitizeTitleLocal = useCallback((s: string) => {
     const allowed = new Set<string>([' ', '-', ...'0123456789', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'abcdefghijklmnopqrstuvwxyz']);
@@ -102,7 +96,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       return fallback;
     };
 
-    // Resolve center icon href to a data URL (embed) to avoid broken links in standalone SVG viewers
     const ensureIconHref = async (): Promise<string | null> => {
       if (centerIcon === "none") return null;
       if (centerIcon === "upload") return uploadedIconUrl ?? null;
@@ -110,7 +103,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
         try {
           const res = await fetch("/favicon.svg", { cache: "force-cache" });
           const text = await res.text();
-          // Encode as data URL (UTF-8). Using percent-encoding for compatibility.
           const encoded = encodeURIComponent(text);
           return `data:image/svg+xml;charset=utf-8,${encoded}`;
         } catch {
@@ -126,7 +118,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       const cx = width / 2;
       const cy = width / 2;
       const B = box.toFixed(2);
-      // Outline thickness relative to icon size (no blur)
       const t = Math.max(1, box * 0.06);
       const filterId = `qrIconOutline`;
       return (
@@ -164,7 +155,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
         let w = box, h = box;
         if (ratio > 1) h = box / ratio; else w = box * ratio;
 
-        // Build silhouette from icon alpha on an offscreen canvas
         const off = document.createElement("canvas");
         off.width = Math.ceil(w);
         off.height = Math.ceil(h);
@@ -175,7 +165,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
         offCtx.fillStyle = "#ffffff";
         offCtx.fillRect(0, 0, off.width, off.height);
 
-        // Create crisp outline (no blur) via dilate-approximation and subtract original
         const tPx = Math.ceil(Math.max(1, box * 0.06));
         const ring = document.createElement("canvas");
         ring.width = off.width + 2 * tPx;
@@ -191,12 +180,10 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
             ringCtx.drawImage(off, tPx + dx, tPx + dy);
           }
         }
-        // Subtract the original silhouette to leave only the outer ring
         ringCtx.globalCompositeOperation = "destination-out";
         ringCtx.drawImage(off, tPx, tPx);
         ringCtx.globalCompositeOperation = "source-over";
 
-        // Draw outline then original icon
         ctx.drawImage(ring, cx - ring.width / 2, cy - ring.height / 2);
         ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
       } catch {}
@@ -537,7 +524,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                 dangerouslySetInnerHTML={{ __html: svgPreview }}
               />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
               <motion.img
                 key="qr-png"
                 src={pngUrl!}
@@ -622,7 +608,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                     />
                   </div>
                 ) : null}
-                {/* Dot shape (moved up) */}
                 <div>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Dot shape</label>
@@ -640,7 +625,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                     disabled={!shareUrl}
                   />
                 </div>
-                {/* Center icon (moved up) */}
                 <div>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Center icon</label>
@@ -649,14 +633,12 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                     <AnimatedSelect<CenterIcon>
                       value={centerIcon}
                       onChange={(v) => {
-                        // if switching away from upload, clear uploaded icon
                         if (v !== "upload" && uploadedIconUrl) {
                           setUploadedIconUrl(null);
                           if (fileInputRef.current) fileInputRef.current.value = "";
                         }
                         setCenterIcon(v);
                         if (v === "upload") {
-                          // ensure same-file re-upload triggers change
                           if (fileInputRef.current) fileInputRef.current.value = "";
                           fileInputRef.current?.click();
                         }
@@ -701,7 +683,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                   </div>
                 </div>
 
-                {/* Encryption redesigned */}
                 {typeof encrypt === "boolean" && onChangeEncrypt ? (
                   <div>
                     <div className="flex items-center justify-between">
@@ -755,7 +736,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                   </div>
                 ) : null}
 
-                {/* Error correction moved before step */}
                 <div>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Error correction</label>
@@ -805,7 +785,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                     />
                   </div>
                 ) : null}
-                {/* Bond data (toggle) */}
                 {typeof omitBonds === "boolean" && onChangeOmitBonds ? (
                   <div>
                     <div className="flex items-center justify-between">
@@ -837,7 +816,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                     </div>
                   </div>
                 ) : null}
-                {/* Delta encoding (toggle) */}
                 {typeof useDelta === "boolean" && onChangeUseDelta ? (
                   <div>
                     <div className="flex items-center justify-between">

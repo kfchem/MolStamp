@@ -22,9 +22,7 @@ type ViewerProps = {
   style?: StyleSettings;
   onGroupReady?: (group: THREE.Group | null) => void;
   className?: string;
-  /** ホームページのみ表示。QRページでは未表示 */
   showRotateControl?: boolean;
-  /** 向きが変わったときに通知（共有URLの再生成などに利用）。現在の Quaternion を渡す */
   onOrientationChange?: (q: THREE.Quaternion) => void;
 };
 
@@ -60,24 +58,16 @@ const useFitCamera = (
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
       radius = Math.max(radius, dist + 0.5);
     });
-    // ズーム境界（CameraControls の orbit 距離）。min は固定、max は分子サイズ連動。
-  const minR = 0.2; // 固定拡大閾値（より寄れるように）
+  const minR = 0.2;
     const maxR = Math.max(50, radius * 1.8);
     const desiredR = Math.max(radius * 3, 4.5);
-    // 初期距離（半径距離）を境界内にクランプ
     const r = Math.min(Math.max(desiredR, minR), maxR);
-    // 対角方向へ配置する場合、各成分は r / √3 にする
     const d = r / Math.sqrt(3);
     const pos = new THREE.Vector3(center.x + d, center.y + d, center.z + d);
-    // near を固定小値にして大小分子でも寄り限界の体感差を減らす
   camera.near = 0.01;
     camera.far = Math.max(5000, radius * 12);
     camera.updateProjectionMatrix();
-
-    // ズーム境界を更新（縮小/拡大しすぎ防止）
     setZoomBounds?.(minR, maxR);
-
-    // CameraControls を優先。なければ OrbitControls 風のtargetに対応
     const anyControls = controls as any;
     if (anyControls?.setLookAt) {
       anyControls.setLookAt(pos.x, pos.y, pos.z, center.x, center.y, center.z, Boolean(transition));
