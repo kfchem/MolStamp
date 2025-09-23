@@ -146,12 +146,32 @@ export const ArPanel = ({
       }
 
       // iOS以外は model-viewer の activateAR に委譲（Scene Viewer / WebXR）
-      if (!glb) {
-        await buildIfNeeded("glb");
+      const builtGlb = glb ?? (await buildIfNeeded("glb"));
+      if (!builtGlb) throw new Error("GLB not available for AR");
+
+      const mv: any = mvRef.current;
+      if (!mv) throw new Error("AR viewer not ready");
+
+      // Ensure attributes are set on the element
+      try {
+        mv.setAttribute("src", builtGlb.url);
+        if (usdz) mv.setAttribute("ios-src", usdz.url);
+      } catch {}
+
+      // Fallback: if AR isn't supported, download GLB instead
+      if (typeof mv.canActivateAR !== "undefined" && mv.canActivateAR === false) {
+        const a = document.createElement("a");
+        a.href = builtGlb.url;
+        a.download = "molecule.glb";
+        document.body.append(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+        setStatus("AR not supported on this device. Downloaded GLB instead.");
+        return;
       }
-      setTimeout(() => {
-        (mvRef.current as any)?.activateAR?.();
-      }, 0);
+
+      // Try to activate AR (WebXR / Scene Viewer if available)
+      mv.activateAR?.();
     } catch (e) {
       console.error(e);
       setStatus((e as Error).message || "Failed to open AR");
