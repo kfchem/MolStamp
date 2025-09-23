@@ -7,7 +7,7 @@ import { Viewer } from "@/components/Viewer";
 import { OptionsPanel } from "@/components/OptionsPanel";
 import { ArPanel } from "@/components/ArPanel";
 import { QrMaker } from "@/components/QrMaker";
-import { APP_NAME, TAGLINE } from "@/lib/branding";
+import { APP_NAME, TAGLINE, PLUS_NAME, PLUS_URL } from "@/lib/branding";
 import { parseSdf } from "@/lib/parse/parseSdf";
 import { parseXyz } from "@/lib/parse/parseXyz";
 import { encodeShareData, encodeShareDataEncrypted, buildShareUrl } from "@/lib/share/encode";
@@ -196,7 +196,19 @@ const HomePage = () => {
                 </div>
               ) : (
                 <p className="text-sm leading-6 text-slate-600">
-                  {headerSubtitle}
+                  {headerSubtitle}{" "}
+                  <span>
+                    For 2D drawings, use {" "}
+                    <a
+                      href={PLUS_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sky-600 hover:text-sky-700 underline underline-offset-2"
+                    >
+                      {PLUS_NAME}
+                    </a>
+                    .
+                  </span>
                 </p>
               )}
             </div>

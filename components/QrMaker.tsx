@@ -574,7 +574,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       <motion.div layout className="rounded-lg border border-slate-200">
         <button
           type="button"
-          className="flex w-full items-center justify-between rounded-t-lg bg-slate-50 px-3 py-2 text-left text-sm font-medium text-slate-700"
+          className={`flex w-full items-center justify-between  ${open ? "rounded-t-lg" : "rounded-lg"} bg-slate-50 px-3 py-2 text-left text-sm font-medium text-slate-700`}
           onClick={() => setOpen((v) => !v)}
         >
           <span>Options</span>
@@ -788,23 +788,6 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                         return arr;
                       })()}
                     />
-                  </div>
-                ) : null}
-                {typeof coarseCoords === "boolean" && onChangeCoarseCoords && typeof precisionDrop === "undefined" ? (
-                  <div>
-                    <label className="flex items-center justify-between">
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Coarser coordinates</span>
-                      <span className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500">-1 bit, smaller QR</span>
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                          checked={coarseCoords}
-                          onChange={(e) => onChangeCoarseCoords?.(e.target.checked)}
-                          disabled={!shareUrl}
-                        />
-                      </span>
-                    </label>
                   </div>
                 ) : null}
                 {/* Bond data (toggle) */}
