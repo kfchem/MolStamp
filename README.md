@@ -1,4 +1,4 @@
-# Molecular ToGo
+# Molecules ToGo
 
 Share molecules fast — from QR to AR.
 
