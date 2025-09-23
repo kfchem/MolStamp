@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as THREE from "three";
 import type { Group } from "three";
 import { UploadDropzone, UploadPayload } from "@/components/UploadDropzone";
 import { Viewer } from "@/components/Viewer";
@@ -56,6 +57,7 @@ const HomePage = () => {
     setError(null);
     setShareState(null);
     setTitle("");
+    setOrientationQ(null);
   }, []);
   const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +73,8 @@ const HomePage = () => {
   const [title, setTitle] = useState<string>("");
   const [encrypt, setEncrypt] = useState<boolean>(false);
   const [password, setPassword] = useState<string>("");
+  // Viewer の向き（Quaternion）を保持し、QR エンコード時に焼き込む
+  const [orientationQ, setOrientationQ] = useState<THREE.Quaternion | null>(null);
   // Coordinate precision: number of LSBs to drop (0..8)
   const [precisionDrop, setPrecisionDrop] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(0);
 
@@ -79,6 +83,7 @@ const HomePage = () => {
     setInfo(null);
     setShareState(null);
     setViewerGroup(null);
+    setOrientationQ(null);
 
     try {
       const parsed = parseMolecule(payload.text, payload.format);
@@ -124,6 +129,20 @@ const HomePage = () => {
     }
     const id = setTimeout(async () => {
       try {
+        // 必要に応じて現在の向きを焼き込んだ座標で共有
+        const molForShare: Molecule = (() => {
+          if (!molecule) return molecule as any;
+          if (!orientationQ) return molecule;
+          const inv = orientationQ.clone();
+          // 共有上は現在見えている向きを "正面" として固定化するため、
+          // モデル自体にその回転を適用して座標を書き換える
+          const m = new THREE.Matrix4().makeRotationFromQuaternion(inv);
+          const atoms = molecule.atoms.map((a) => {
+            const v = new THREE.Vector3(a.x, a.y, a.z).applyMatrix4(m);
+            return { ...a, x: v.x, y: v.y, z: v.z };
+          });
+          return { ...molecule, atoms };
+        })();
         const useEnc = encrypt && password.trim().length >= 4;
         if (useEnc) {
           const hasCrypto = typeof globalThis !== 'undefined' && (globalThis as any).crypto && (globalThis as any).crypto.subtle;
@@ -132,8 +151,8 @@ const HomePage = () => {
           }
         }
         const { encoded, byteLength, scaleExp } = useEnc
-          ? await encodeShareDataEncrypted({ molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title, password: password.trim() })
-          : encodeShareData({ molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title });
+          ? await encodeShareDataEncrypted({ molecule: molForShare, style, omitBonds, coarseCoords, precisionDrop, useDelta, title, password: password.trim() })
+          : encodeShareData({ molecule: molForShare, style, omitBonds, coarseCoords, precisionDrop, useDelta, title });
         const origin = typeof window !== "undefined" ? window.location.origin : "";
   const fallbackOrigin = "https://m2go.kfchem.dev";
         const url = buildShareUrl(origin || fallbackOrigin, encoded);
@@ -146,7 +165,7 @@ const HomePage = () => {
       }
     }, 600);
     return () => clearTimeout(id);
-  }, [molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title, encrypt, password]);
+  }, [molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title, encrypt, password, orientationQ]);
 
   const headerSubtitle = useMemo(() => {
     if (!molecule || !fileMeta) {
@@ -254,7 +273,14 @@ const HomePage = () => {
             disableClick={Boolean(molecule)}
             disableDrop={false}
           >
-            <Viewer molecule={molecule} style={style} onGroupReady={setViewerGroup} className="h-[50vh] min-h-[340px]" />
+            <Viewer
+              molecule={molecule}
+              style={style}
+              onGroupReady={setViewerGroup}
+              showRotateControl
+              onOrientationChange={(q)=> setOrientationQ(q)}
+              className="h-[50vh] min-h-[340px]"
+            />
           </UploadDropzone>
 
           {/* 左カラム: オプションのみ（ARは右カラムへ） */}

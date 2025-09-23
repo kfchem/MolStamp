@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatedSelect } from "./AnimatedSelect";
 import { AnimatePresence, motion } from "framer-motion";
+import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline";
 import { LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
 import QRCode from "qrcode";
 
@@ -44,6 +45,10 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
   const [pngUrl, setPngUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // copy URL toast
+  const [copiedVisible, setCopiedVisible] = useState<boolean>(false);
+  const [copiedId, setCopiedId] = useState<number>(0);
+  const copiedTimerRef = useRef<number | null>(null);
   // for encryption toggle invalid attempt shake
   const [encShake, setEncShake] = useState<boolean>(false);
   const sanitizeTitleLocal = useCallback((s: string) => {
@@ -449,6 +454,11 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
     try {
       await navigator.clipboard.writeText(shareUrl);
       setError(null);
+      // show small popup
+      setCopiedId((v) => v + 1);
+      setCopiedVisible(true);
+      if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = window.setTimeout(() => setCopiedVisible(false), 1200);
       return;
     } catch (e) {
       try {
@@ -463,6 +473,11 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
         document.body.removeChild(ta);
         if (!ok) throw new Error("execCommand failed");
         setError(null);
+        // show small popup even on fallback
+        setCopiedId((v) => v + 1);
+        setCopiedVisible(true);
+        if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = window.setTimeout(() => setCopiedVisible(false), 1200);
       } catch (fallbackErr) {
         setError((fallbackErr as Error).message || "Failed to copy URL");
       }
@@ -497,14 +512,35 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
     <motion.div layout className="space-y-3 rounded-xl border border-slate-300 bg-white p-4 shadow-sm max-w-full">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">QR Sharing</h2>
-        <button
-          type="button"
-          onClick={copyUrl}
-          className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!shareUrl}
-        >
-          Copy URL
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={copyUrl}
+            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!shareUrl}
+          >
+            Copy URL
+          </button>
+          <AnimatePresence initial={false}>
+            {copiedVisible ? (
+              <motion.div
+                key={copiedId}
+                className="absolute right-0 -top-4 translate-y-[-100%] rounded-md border border-sky-200 bg-white/95 px-2 py-1 text-xs text-sky-700 shadow-sm ring-1 ring-sky-100 backdrop-blur"
+                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                role="status"
+                aria-live="polite"
+              >
+                <span className="inline-flex items-center gap-1">
+                  <ClipboardDocumentCheckIcon className="h-3.5 w-3.5" />
+                  Copied
+                </span>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
       </div>
       <motion.div layout className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-3 overflow-hidden max-w-full">
         <AnimatePresence initial={false} mode="wait">
