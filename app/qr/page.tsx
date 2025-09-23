@@ -18,21 +18,17 @@ const DEFAULT_STYLE: StyleSettings = {
   quality: "medium",
 };
 
-const ModelViewer: any = "model-viewer" as unknown as (
+type ModelViewerProps = DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
+  src?: string;
+  'ios-src'?: string;
+  ar?: boolean | 'true' | 'false';
+  'ar-modes'?: string;
+  'camera-controls'?: boolean | 'true' | 'false';
+  autoplay?: boolean | 'true' | 'false';
+};
+const ModelViewer = "model-viewer" as unknown as (
   props: ModelViewerProps
 ) => ReactElement;
-
-type ModelViewerProps = DetailedHTMLProps<
-  HTMLAttributes<HTMLElement>,
-  HTMLElement
-> & {
-  src?: string;
-  "ios-src"?: string;
-  ar?: boolean | "true" | "false";
-  "ar-modes"?: string;
-  "camera-controls"?: boolean | "true" | "false";
-  autoplay?: boolean | "true" | "false";
-};
 
 const ShareQrPage = () => {
   const [loading, setLoading] = useState(true);
@@ -155,8 +151,8 @@ const ShareQrPage = () => {
 
       if (mvRef.current) {
         try {
-          (mvRef.current as any).setAttribute("src", glbUrl);
-          (mvRef.current as any).setAttribute("ios-src", usdzUrl);
+          mvRef.current.setAttribute("src", glbUrl);
+          mvRef.current.setAttribute("ios-src", usdzUrl);
         } catch {}
       }
 
@@ -190,7 +186,7 @@ const ShareQrPage = () => {
         return;
       }
 
-  const mv: any = mvRef.current;
+  const mv = mvRef.current as unknown as { canActivateAR?: boolean; activateAR?: () => void; setAttribute: (name: string, value: string) => void } | null;
       if (!mv) throw new Error("AR viewer not ready");
 
       mv.setAttribute("src", built.glb.url);
@@ -446,7 +442,7 @@ const ShareQrPage = () => {
 
       {mvReady ? (
         <ModelViewer
-          ref={mvRef as any}
+          ref={mvRef}
           style={{ width: 0, height: 0, position: "absolute", opacity: 0 }}
           src={glb?.url ?? undefined}
           ios-src={usdz?.url ?? undefined}

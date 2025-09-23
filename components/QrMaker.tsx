@@ -462,17 +462,44 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
 
   const copyUrl = useCallback(async () => {
     if (!shareUrl) return;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setError(null);
-      // show small popup
+    const showToast = () => {
       setCopiedId((v) => v + 1);
       setCopiedVisible(true);
       if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
       copiedTimerRef.current = window.setTimeout(() => setCopiedVisible(false), 1200);
-      return;
+    };
+    const fallbackCopy = (text: string): boolean => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "absolute";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    };
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast();
+        return;
+      }
+      // Fallback path
+      const ok = fallbackCopy(shareUrl);
+      if (ok) {
+        showToast();
+        return;
+      }
+      throw new Error("Clipboard API is unavailable in this context");
     } catch (e) {
-      setError((e as Error).message || "Failed to copy URL");
+      const msg = (e as Error)?.message || "Failed to copy URL";
+      setError(`${msg}. Your browser may not allow copying here. Please copy manually.`);
     }
   }, [shareUrl]);
 

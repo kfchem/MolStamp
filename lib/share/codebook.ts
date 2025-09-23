@@ -1,11 +1,13 @@
 import { elements } from "../chem/atomUtils";
 
+type ElementEntry = { symbol: string; number: number };
+
 // Codes are atomic numbers (Z). 1..118 fit in 7 bits.
 const Z_INDEXED_SYMBOLS: string[] = (() => {
   const arr = new Array<string>(128).fill("X");
-  for (const e of elements) {
-    const z = (e as any).number as number | undefined;
-    const sym = (e as any).symbol as string | undefined;
+  for (const e of elements as ElementEntry[]) {
+    const z = e.number;
+    const sym = e.symbol;
     if (typeof z === "number" && z > 0 && z < 128 && typeof sym === "string") {
       arr[z] = sym;
     }
@@ -19,13 +21,11 @@ const Z_INDEXED_SYMBOLS: string[] = (() => {
 
 const SYMBOL_TO_Z = (() => {
   const map = new Map<string, number>();
-  for (const e of elements) {
-    const sym = (e as any).symbol as string | undefined;
-    const z = (e as any).number as number | undefined;
-    if (typeof sym === "string" && typeof z === "number") {
-      const key = sym.length === 1 ? sym.toUpperCase() : sym[0].toUpperCase() + sym.slice(1).toLowerCase();
-      map.set(key, z);
-    }
+  for (const e of elements as ElementEntry[]) {
+    const sym = e.symbol;
+    const z = e.number;
+    const key = sym.length === 1 ? sym.toUpperCase() : sym[0].toUpperCase() + sym.slice(1).toLowerCase();
+    map.set(key, z);
   }
   return map;
 })();

@@ -12,7 +12,7 @@ const getWebCrypto = (): Crypto => {
 
 const getSubtle = (): SubtleCrypto => {
   const c = getWebCrypto();
-  const s = (c as any).subtle as SubtleCrypto | undefined;
+  const s = c?.subtle as SubtleCrypto | undefined;
   if (!s) {
     // Typically occurs on insecure (non-HTTPS) context or very old browser
     throw new Error("Web Crypto 'subtle' API is unavailable. Open this page over HTTPS (secure context) and use a modern browser.");

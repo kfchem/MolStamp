@@ -2,6 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DetailedHTMLProps, HTMLAttributes, ReactElement } from "react";
+type ModelViewerProps = DetailedHTMLProps<
+  HTMLAttributes<HTMLElement>,
+  HTMLElement
+> & {
+  src?: string;
+  'ios-src'?: string;
+  ar?: boolean | 'true' | 'false';
+  'ar-modes'?: string;
+  'camera-controls'?: boolean | 'true' | 'false';
+  autoplay?: boolean | 'true' | 'false';
+};
+const ModelViewer = "model-viewer" as unknown as (
+  props: ModelViewerProps
+) => ReactElement;
 import * as THREE from "three";
 import { exportGlb } from "@/lib/export/exportGlb";
 import { exportUsdz } from "@/lib/export/exportUsdz";
@@ -20,20 +34,7 @@ type ArtifactState = {
   size: number;
 };
 
-type ModelViewerProps = DetailedHTMLProps<
-  HTMLAttributes<HTMLElement>,
-  HTMLElement
-> & {
-  src?: string;
-  "ios-src"?: string;
-  ar?: boolean | "true" | "false";
-  "ar-modes"?: string;
-  "camera-controls"?: boolean | "true" | "false";
-  autoplay?: boolean | "true" | "false";
-};
-const ModelViewer: any = "model-viewer" as unknown as (
-  props: ModelViewerProps
-) => ReactElement;
+// Using intrinsic <model-viewer> element (typed via global JSX augmentation)
 
 const formatBytes = (bytes: number): string => {
   if (!Number.isFinite(bytes) || bytes <= 0) return "";
@@ -149,7 +150,7 @@ export const ArPanel = ({
       const builtGlb = glb ?? (await buildIfNeeded("glb"));
       if (!builtGlb) throw new Error("GLB not available for AR");
 
-      const mv: any = mvRef.current;
+  const mv = mvRef.current as unknown as { canActivateAR?: boolean; activateAR?: () => void; setAttribute: (name: string, value: string) => void } | null;
       if (!mv) throw new Error("AR viewer not ready");
 
       try {
@@ -243,7 +244,7 @@ export const ArPanel = ({
 
       {isMounted ? (
         <ModelViewer
-          ref={mvRef as any}
+          ref={mvRef}
           key={(glb?.url ?? "") + (usdz?.url ?? "")}
           style={{ width: 0, height: 0, position: "absolute", opacity: 0 }}
           src={glb?.url ?? undefined}

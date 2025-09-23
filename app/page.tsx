@@ -46,6 +46,7 @@ const HomePage = () => {
     name: string;
     size: number;
   } | null>(null);
+  const [qrResetKey, setQrResetKey] = useState<number>(0);
 
   const resetAll = useCallback(() => {
     setMolecule(null);
@@ -58,6 +59,13 @@ const HomePage = () => {
     setShareState(null);
     setTitle("");
     setOrientationQ(null);
+    // Reset QR options and remount QR panel to clear internal UI state
+    setOmitBonds(false);
+    setUseDelta(false);
+    setEncrypt(false);
+    setPassword("");
+    setPrecisionDrop(0);
+    setQrResetKey((v) => v + 1);
   }, []);
   const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -305,6 +313,7 @@ const HomePage = () => {
                 onChangeEncrypt={setEncrypt}
                 password={password}
                 onChangePassword={setPassword}
+              key={qrResetKey}
             />
           </div>
       </div>
