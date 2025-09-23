@@ -58,6 +58,14 @@ export const ArPanel = ({
 
   useEffect(() => {
     setIsMounted(true);
+    // Register model-viewer element locally (no external CDN)
+    (async () => {
+      try {
+        if (typeof window !== 'undefined' && !customElements.get('model-viewer')) {
+          await import('@google/model-viewer');
+        }
+      } catch {}
+    })();
     return () => {
       setIsMounted(false);
     };

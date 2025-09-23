@@ -211,6 +211,16 @@ const ShareQrPage = () => {
   }, [rebuildArtifacts, viewerGroup, mvReady]);
 
   useEffect(() => {
+    (async () => {
+      try {
+        if (typeof window !== 'undefined' && !customElements.get('model-viewer')) {
+          await import('@google/model-viewer');
+        }
+      } catch {}
+    })();
+  }, []);
+
+  useEffect(() => {
     const onDocMouseDown = (e: MouseEvent) => {
       if (!optionsOpen) return;
       const t = e.target as Node;

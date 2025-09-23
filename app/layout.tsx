@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { ReactNode } from "react";
 import { APP_NAME, TAGLINE } from "@/lib/branding";
 import "@/styles/globals.css";
@@ -22,11 +21,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
         {children}
-        <Script
-          src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"
-          type="module"
-          strategy="lazyOnload"
-        />
       </body>
     </html>
   );
