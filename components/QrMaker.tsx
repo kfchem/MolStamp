@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatedSelect } from "./AnimatedSelect";
 import { AnimatePresence, motion } from "framer-motion";
+import { LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
 import QRCode from "qrcode";
 
 export type ErrorCorrectionLevel = "L" | "M" | "Q" | "H";
@@ -27,9 +28,14 @@ export type QrMakerProps = {
   scaleExp?: number;
   useDelta?: boolean;
   onChangeUseDelta?: (v: boolean) => void;
+  // encryption controls
+  encrypt?: boolean;
+  onChangeEncrypt?: (v: boolean) => void;
+  password?: string;
+  onChangePassword?: (v: string) => void;
 };
 
-export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBonds, onChangeOmitBonds, payloadBytes, coarseCoords, onChangeCoarseCoords, precisionDrop, onChangePrecisionDrop, scaleExp, useDelta, onChangeUseDelta }: QrMakerProps) => {
+export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBonds, onChangeOmitBonds, payloadBytes, coarseCoords, onChangeCoarseCoords, precisionDrop, onChangePrecisionDrop, scaleExp, useDelta, onChangeUseDelta, encrypt, onChangeEncrypt, password, onChangePassword }: QrMakerProps) => {
   const [ecc, setEcc] = useState<ErrorCorrectionLevel>("L");
   const [dotShape, setDotShape] = useState<DotShape>("square");
   const [centerIcon, setCenterIcon] = useState<CenterIcon>("none");
@@ -38,6 +44,8 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
   const [pngUrl, setPngUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // for encryption toggle invalid attempt shake
+  const [encShake, setEncShake] = useState<boolean>(false);
   const sanitizeTitleLocal = useCallback((s: string) => {
     const allowed = new Set<string>([' ', '-', ...'0123456789', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'abcdefghijklmnopqrstuvwxyz']);
     let out = '';
@@ -584,122 +592,22 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
               <div className="py-3 space-y-4">
                 {typeof onChangeTitle === "function" ? (
                   <div>
-                    <label className="flex items-center justify-between">
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Title</span>
-                      <input
-                        type="text"
-                        className="h-8 w-56 rounded border border-slate-300 px-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none"
-                        placeholder="Optional title"
-                        title="Up to 63 chars; A–Z a–z 0–9 space -"
-                        value={title ?? ""}
-                        onChange={(e) => onChangeTitle?.(sanitizeTitleLocal(e.target.value))}
-                        maxLength={63}
-                        disabled={!shareUrl}
-                      />
-                    </label>
-                  </div>
-                ) : null}
-                {typeof omitBonds === "boolean" && onChangeOmitBonds ? (
-                  <div>
-                    <label className="flex items-center justify-between">
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Bond omission</span>
-                      <span className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500">smaller QR</span>
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                          checked={omitBonds}
-                          onChange={(e) => onChangeOmitBonds?.(e.target.checked)}
-                          disabled={!shareUrl}
-                        />
-                      </span>
-                    </label>
-                  </div>
-                ) : null}
-                {typeof useDelta === "boolean" && onChangeUseDelta ? (
-                  <div>
-                    <label className="flex items-center justify-between">
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Use delta encoding</span>
-                      <span className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500">often smaller</span>
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                          checked={useDelta}
-                          onChange={(e) => onChangeUseDelta?.(e.target.checked)}
-                          disabled={!shareUrl}
-                        />
-                      </span>
-                    </label>
-                  </div>
-                ) : null}
-                {typeof precisionDrop !== "undefined" && onChangePrecisionDrop ? (
-                  <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Coordinate step (approx.)</label>
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Title</label>
                     </div>
-                    <AnimatedSelect<string>
-                      className="mt-1"
-                      value={String(precisionDrop)}
-                      onChange={(v) => onChangePrecisionDrop?.(Number(v) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8)}
+                    <input
+                      type="text"
+                      className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60 placeholder:text-slate-400"
+                      placeholder="Optional title"
+                      title="Up to 63 chars; A–Z a–z 0–9 space -"
+                      value={title ?? ""}
+                      onChange={(e) => onChangeTitle?.(sanitizeTitleLocal(e.target.value))}
+                      maxLength={63}
                       disabled={!shareUrl}
-                      options={(() => {
-                        const e = typeof scaleExp === "number" ? scaleExp : 0;
-                        const label = (drop: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
-                          const step = Math.pow(2, e + drop) / 1000; // Å
-                          // Clean numeric display up to 4 decimals without unnecessary trailing zeros
-                          const fmtNum = (v: number) => {
-                            const s = v.toFixed(4);
-                            return s.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
-                          };
-                          const fmt = `${fmtNum(step)} Å`;
-                          const tag = step < 0.01 ? "High" : step < 0.05 ? "Med" : step < 0.2 ? "Low" : "Very low";
-                          return `${fmt} (${tag})`;
-                        };
-                        const arr: { value: string; label: string }[] = [];
-                        for (let d = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8; d <= 8; d = (d + 1) as any) {
-                          arr.push({ value: String(d), label: label(d) });
-                        }
-                        return arr;
-                      })()}
                     />
                   </div>
                 ) : null}
-                {typeof coarseCoords === "boolean" && onChangeCoarseCoords && typeof precisionDrop === "undefined" ? (
-                  <div>
-                    <label className="flex items-center justify-between">
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Coarser coordinates</span>
-                      <span className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500">-1 bit, smaller QR</span>
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                          checked={coarseCoords}
-                          onChange={(e) => onChangeCoarseCoords?.(e.target.checked)}
-                          disabled={!shareUrl}
-                        />
-                      </span>
-                    </label>
-                  </div>
-                ) : null}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Error correction</label>
-                  </div>
-                  <AnimatedSelect<ErrorCorrectionLevel>
-                    className="mt-1"
-                    value={ecc}
-                    onChange={(v) => setEcc(v)}
-                    options={[
-                      { value: "L", label: "L (7%)" },
-                      { value: "M", label: "M (15%)" },
-                      { value: "Q", label: "Q (25%)" },
-                      { value: "H", label: "H (30%)" },
-                    ]}
-                    disabled={!shareUrl}
-                  />
-                </div>
-
+                {/* Dot shape (moved up) */}
                 <div>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Dot shape</label>
@@ -717,7 +625,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                     disabled={!shareUrl}
                   />
                 </div>
-
+                {/* Center icon (moved up) */}
                 <div>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Center icon</label>
@@ -778,19 +686,191 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                   </div>
                 </div>
 
+                {/* Encryption redesigned */}
+                {typeof encrypt === "boolean" && onChangeEncrypt ? (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Simple encryption</label>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="password"
+                        className={`w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60 placeholder:text-slate-400 ${encShake ? "border-rose-500 bg-rose-50" : "border-slate-200"}`}
+                        placeholder={"Password (min 4 chars)"}
+                        value={password ?? ""}
+                        onChange={(e) => onChangePassword?.(e.target.value)}
+                        disabled={!shareUrl}
+                        aria-invalid={encShake || undefined}
+                      />
+                      <motion.button
+                        type="button"
+                        role="switch"
+                        aria-checked={encrypt}
+                        aria-label={encrypt ? "Encrypted" : "Unencrypted"}
+                        onClick={() => {
+                          if (!onChangeEncrypt) return;
+                          if (!encrypt) {
+                            const pwd = (password ?? "").trim();
+                            const isValid = pwd.length >= 4;
+                            if (!isValid) {
+                              setEncShake(true);
+                              setTimeout(() => setEncShake(false), 1100);
+                              return;
+                            }
+                          }
+                          onChangeEncrypt(!encrypt);
+                        }}
+                        disabled={!shareUrl}
+                        className={`relative h-[38px] w-20 rounded-md p-0.5 shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${encrypt ? "bg-sky-50 border border-sky-300 hover:border-sky-400 " : "bg-white border border-slate-200 hover:border-sky-300 "}`}
+                      >
+                        <motion.div
+                          className={`absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-[0.36rem] ${encrypt ? "bg-sky-500" : "bg-slate-500"}`}
+                          animate={encShake ? { left: ["0.125rem", "0.9rem", "0.2rem", "0.75rem", "0.3rem", "0.6rem", "0.125rem"] } : { left: encrypt ? "50%" : "0.125rem" }}
+                          transition={encShake ? { duration: 0.35, ease: "easeInOut" } : { type: "spring", stiffness: 300, damping: 26 }}
+                        />
+                        <span className="absolute top-0.5 bottom-0.5 left-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
+                          <LockOpenIcon className={`${encrypt ? "text-slate-600" : "text-white"} h-4 w-4`} />
+                        </span>
+                        <span className="absolute top-0.5 bottom-0.5 right-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
+                          <LockClosedIcon className={`${encrypt ? "text-white" : "text-slate-600"} h-4 w-4`} />
+                        </span>
+                        <span className="sr-only">{encrypt ? "Encrypted" : "Unencrypted"}</span>
+                      </motion.button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Error correction moved before step */}
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Protection</label>
-                    <span className="text-[10px] rounded bg-sky-50 px-1.5 py-0.5 text-sky-600">Soon</span>
+                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Error correction</label>
                   </div>
-                  <AnimatedSelect
+                  <AnimatedSelect<ErrorCorrectionLevel>
                     className="mt-1"
-                    value={"none" as any}
-                    onChange={() => {}}
-                    options={[{ value: "none" as any, label: "None" }, { value: "passcode" as any, label: "Passcode" }, { value: "encrypt" as any, label: "Encrypt" }]}
-                    disabled
+                    value={ecc}
+                    onChange={(v) => setEcc(v)}
+                    options={[
+                      { value: "L", label: "L (7%)" },
+                      { value: "M", label: "M (15%)" },
+                      { value: "Q", label: "Q (25%)" },
+                      { value: "H", label: "H (30%)" },
+                    ]}
+                    disabled={!shareUrl}
                   />
                 </div>
+
+                {typeof precisionDrop !== "undefined" && onChangePrecisionDrop ? (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Coordinate step (approx.)</label>
+                    </div>
+                    <AnimatedSelect<string>
+                      className="mt-1"
+                      value={String(precisionDrop)}
+                      onChange={(v) => onChangePrecisionDrop?.(Number(v) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8)}
+                      disabled={!shareUrl}
+                      options={(() => {
+                        const e = typeof scaleExp === "number" ? scaleExp : 0;
+                        const label = (drop: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
+                          const step = Math.pow(2, e + drop) / 1000; // Å
+                          const fmtNum = (v: number) => {
+                            const s = v.toFixed(4);
+                            return s.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+                          };
+                          const fmt = `${fmtNum(step)} Å`;
+                          const tag = step < 0.01 ? "High" : step < 0.05 ? "Med" : step < 0.2 ? "Low" : "Very low";
+                          return `${fmt} (${tag})`;
+                        };
+                        const arr: { value: string; label: string }[] = [];
+                        for (let d = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8; d <= 8; d = (d + 1) as any) {
+                          arr.push({ value: String(d), label: label(d) });
+                        }
+                        return arr;
+                      })()}
+                    />
+                  </div>
+                ) : null}
+                {typeof coarseCoords === "boolean" && onChangeCoarseCoords && typeof precisionDrop === "undefined" ? (
+                  <div>
+                    <label className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Coarser coordinates</span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-500">-1 bit, smaller QR</span>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                          checked={coarseCoords}
+                          onChange={(e) => onChangeCoarseCoords?.(e.target.checked)}
+                          disabled={!shareUrl}
+                        />
+                      </span>
+                    </label>
+                  </div>
+                ) : null}
+                {/* Bond data (toggle) */}
+                {typeof omitBonds === "boolean" && onChangeOmitBonds ? (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Bond data</label>
+                    </div>
+                    <div className="mt-1">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={omitBonds}
+                        aria-label={omitBonds ? "Auto-generate bonds" : "Include bonds"}
+                        onClick={() => onChangeOmitBonds?.(!omitBonds)}
+                        disabled={!shareUrl}
+                        className={`relative h-[38px] w-full rounded-md p-0.5 shadow-sm transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${omitBonds ? "bg-sky-50 border border-sky-300 hover:border-sky-400" : "bg-white border border-slate-200 hover:border-sky-300"}`}
+                      >
+                        <motion.div
+                          className={`absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-[0.36rem] ${omitBonds ? "bg-sky-500" : "bg-slate-500"}`}
+                          animate={{ left: omitBonds ? "50%" : "0.125rem" }}
+                          transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                        />
+                        <span className="absolute top-0.5 bottom-0.5 left-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
+                          <span className={`${omitBonds ? "text-slate-600" : "text-white"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}>Include</span>
+                        </span>
+                        <span className="absolute top-0.5 bottom-0.5 right-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
+                          <span className={`${omitBonds ? "text-white" : "text-slate-600"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}>Auto-generate</span>
+                        </span>
+                        <span className="sr-only">{omitBonds ? "Auto-generate bonds" : "Include bonds"}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {/* Delta encoding (toggle) */}
+                {typeof useDelta === "boolean" && onChangeUseDelta ? (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Atom indices</label>
+                    </div>
+                    <div className="mt-1">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={useDelta}
+                        aria-label={useDelta ? "Optimized" : "As-is"}
+                        onClick={() => onChangeUseDelta?.(!useDelta)}
+                        disabled={!shareUrl}
+                        className={`relative h-[38px] w-full rounded-md p-0.5 shadow-sm transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${useDelta ? "bg-sky-50 border border-sky-300 hover:border-sky-400" : "bg-white border border-slate-200 hover:border-sky-300"}`}
+                      >
+                        <motion.div
+                          className={`absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-[0.36rem] ${useDelta ? "bg-sky-500" : "bg-slate-500"}`}
+                          animate={{ left: useDelta ? "50%" : "0.125rem" }}
+                          transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                        />
+                        <span className="absolute top-0.5 bottom-0.5 left-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
+                          <span className={`${useDelta ? "text-slate-600" : "text-white"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}>As-is</span>
+                        </span>
+                        <span className="absolute top-0.5 bottom-0.5 right-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
+                          <span className={`${useDelta ? "text-white" : "text-slate-600"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}>Optimized</span>
+                        </span>
+                        <span className="sr-only">{useDelta ? "Optimized" : "As-is"}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

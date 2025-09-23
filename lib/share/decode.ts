@@ -1,13 +1,11 @@
 import { inflate } from "pako";
 import type { Molecule, StyleSettings } from "../chem/types";
-import { fromBase80, fromBase80LegacyPercent } from "../util/base80";
-import { fromBase64Url } from "../util/base64url";
+import { fromBase80 } from "../util/base80";
 import type { ShareAtom, ShareBond, SharePayload, ShareStyle } from "./encode";
 import { BitReader } from "./bitstream";
-import { codeToSymbol, codeToSymbolLegacy } from "./codebook";
+import { codeToSymbol } from "./codebook";
 import { guessBonds } from "../chem/bondGuess";
-
-const decoder = new TextDecoder();
+import { aesGcmDecrypt, importKeyFromPasswordPBKDF2 } from "../util/crypto";
 
 const isSharePayload = (value: unknown): value is SharePayload => {
   if (!value || typeof value !== "object") return false;
@@ -43,418 +41,221 @@ export type DecodedShare = {
 };
 
 export const decodeShareSegment = (segment: string): DecodedShare => {
-  // Try Base80 (current) first; if it fails, try legacy-Base80 (with '%'); then Base64URL
-  let rawBytes: Uint8Array | null = null;
-  let inflateErr: unknown = null;
-  const tryInflate = (bytes: Uint8Array) => {
-    try {
-      return inflate(bytes);
-    } catch (e) {
-      inflateErr = e;
-      return null;
-    }
-  };
+  // MTG専用: Base80のみを許可
+  let bytes: Uint8Array;
+  try { bytes = fromBase80(segment); } catch { throw new Error("Invalid Base80 segment"); }
 
-  try {
-    rawBytes = fromBase80(segment);
-    const raw0 = tryInflate(rawBytes);
-    if (raw0) {
-      var raw: Uint8Array = raw0 as Uint8Array;
-    } else {
-      // Fallback to legacy Base80 alphabet that contained '%'
-      rawBytes = fromBase80LegacyPercent(segment);
-      const raw1 = tryInflate(rawBytes);
-      if (raw1) {
-        var raw: Uint8Array = raw1 as Uint8Array;
+  // Check compact MTG envelope v1: ['M','T','G', (ver<<4)|(flags)]
+  if (bytes.byteLength >= 4) {
+    const magic3 = String.fromCharCode(bytes[0], bytes[1], bytes[2]);
+    const vflags = bytes[3];
+    const ver = (vflags >>> 4) & 0x0f;
+    const flags = vflags & 0x0f;
+    if (magic3 === "MTG" && ver === 1) {
+      const enc = (flags & 0x01) !== 0;
+      if (!enc) {
+        // Unencrypted: inflate body after 4 bytes
+        const raw = inflate(bytes.subarray(4));
+        const u8 = new Uint8Array(raw);
+        const r = new BitReader(u8);
+        const atomCount = r.readUnsigned(10);
+        const bondCount = r.readUnsigned(12);
+        const e = r.readUnsigned(2);
+        const coordBits = 8 + r.readUnsigned(4);
+        const material2 = r.readUnsigned(2);
+        const atomScaleQ6 = r.readUnsigned(6);
+        const bondRadiusQ6 = r.readUnsigned(6);
+        const quality2 = r.readUnsigned(2);
+        const deltaFlag = r.readUnsigned(1);
+        const omitBondsFlag = r.readUnsigned(1);
+        const U = r.readUnsigned(7);
+        const dict: number[] = [];
+        for (let i = 0; i < U; i += 1) dict.push(r.readUnsigned(7));
+        const idxBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, U))));
+        const indexBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, atomCount))));
+        const M = 1 << e;
+
+        // Optional title
+        let title: string | undefined;
+        try {
+          const flag = r.readUnsigned(1);
+          if (flag === 1) {
+            const len = r.readUnsigned(6);
+            const alphabet = (() => {
+              const arr: string[] = [' ', '-'];
+              for (let i = 0; i < 10; i++) arr.push(String(i));
+              for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(65 + i));
+              for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(97 + i));
+              return arr;
+            })();
+            const chars: string[] = [];
+            for (let i = 0; i < len; i++) chars.push(alphabet[r.readUnsigned(6)] ?? '-');
+            title = chars.join("").trim();
+          }
+        } catch {}
+
+        const atoms: ShareAtom[] = [];
+        let px = 0, py = 0, pz = 0;
+        for (let i = 0; i < atomCount; i += 1) {
+          const di = r.readUnsigned(idxBits);
+          const code = dict[di] ?? 6;
+          const dx = r.readSigned(coordBits);
+          const dy = r.readSigned(coordBits);
+          const dz = r.readSigned(coordBits);
+          if (i === 0 || deltaFlag === 0) { px = dx; py = dy; pz = dz; } else { px += dx; py += dy; pz += dz; }
+          atoms.push([
+            codeToSymbol(code),
+            (px / 1000) * M,
+            (py / 1000) * M,
+            (pz / 1000) * M,
+          ]);
+        }
+
+        let bonds: ShareBond[] = [];
+        if (omitBondsFlag === 1) {
+          const inferred = guessBonds(atoms.map((a) => ({ symbol: a[0], x: a[1], y: a[2], z: a[3] })));
+          bonds = inferred.map((b) => [b.i, b.j, b.order]);
+        } else {
+          for (let k = 0; k < bondCount; k += 1) {
+            const i = r.readUnsigned(indexBits);
+            const j = r.readUnsigned(indexBits);
+            const ob = r.readUnsigned(2);
+            const order = ob === 0b01 ? 1 : ob === 0b10 ? 2 : 3;
+            bonds.push([i, j, order]);
+          }
+        }
+
+        const materialMap: Record<number, StyleSettings["material"]> = { 0: "standard", 1: "metal", 2: "toon", 3: "glass" };
+        const style: ShareStyle = {
+          material: materialMap[material2] ?? "standard",
+          atomScale: atomScaleQ6 * 0.02,
+          bondRadius: bondRadiusQ6 * 0.02,
+          quality: (quality2 === 0 ? "low" : quality2 === 1 ? "medium" : quality2 === 2 ? "high" : "ultra") as ShareStyle["quality"],
+        } as ShareStyle;
+        const payload: SharePayload = { v: 2, atoms, bonds, style, meta: title ? { title } : undefined };
+        return { payload, molecule: toMolecule(payload), style };
       } else {
-        // Fallback to legacy Base64URL
-        rawBytes = fromBase64Url(segment);
-        const raw2 = tryInflate(rawBytes);
-        if (!raw2) throw inflateErr || new Error("Failed to decode payload");
-        var raw: Uint8Array = raw2 as Uint8Array;
+        throw new Error("Encrypted MTG segment: password required");
       }
-    }
-  } catch {
-    // If mapping itself threw, try legacy then base64url
-    try {
-      rawBytes = fromBase80LegacyPercent(segment);
-      const raw1 = tryInflate(rawBytes);
-      if (raw1) {
-        var raw: Uint8Array = raw1 as Uint8Array;
-      } else {
-        rawBytes = fromBase64Url(segment);
-        const raw2 = tryInflate(rawBytes);
-        if (!raw2) throw inflateErr || new Error("Failed to decode payload");
-        var raw: Uint8Array = raw2 as Uint8Array;
-      }
-    } catch {
-      rawBytes = fromBase64Url(segment);
-      const raw2 = tryInflate(rawBytes);
-      if (!raw2) throw inflateErr || new Error("Failed to decode payload");
-      var raw: Uint8Array = raw2 as Uint8Array;
     }
   }
-  // Try binary v4/v3 first: needs at least 4 bytes for magic+version
-  if (raw.byteLength >= 4) {
-    const u8 = new Uint8Array(raw);
-    const magic = String.fromCharCode(u8[0], u8[1], u8[2]);
-    const version = u8[3];
-    if (magic === "QRM" && version === 7) {
-      const r = new BitReader(u8.subarray(4));
-      const atomCount = r.readUnsigned(10);
-      const bondCount = r.readUnsigned(12);
-      const e = r.readUnsigned(2);
-      const coordBits = 8 + r.readUnsigned(4);
-      const material2 = r.readUnsigned(2);
-      const atomScaleQ6 = r.readUnsigned(6);
-      const bondRadiusQ6 = r.readUnsigned(6);
-      const quality2 = r.readUnsigned(2);
-      const deltaFlag = r.readUnsigned(1);
-      const omitBondsFlag = r.readUnsigned(1);
-      const U = r.readUnsigned(7);
-      const dict: number[] = [];
-      for (let i = 0; i < U; i += 1) dict.push(r.readUnsigned(7));
-      const idxBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, U))));
-      const indexBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, atomCount))));
-      const M = 1 << e;
 
-      // Optional compact title block
-      let title: string | undefined;
-      try {
-        const titleFlag = r.readUnsigned(1);
-        if (titleFlag === 1) {
-          const len = r.readUnsigned(6);
-          const alphabet = (() => {
-            const arr: string[] = [' ', '-'];
-            for (let i = 0; i < 10; i++) arr.push(String(i));
-            for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(65 + i));
-            for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(97 + i));
-            return arr;
-          })();
-          const chars: string[] = [];
-          for (let i = 0; i < len; i += 1) {
-            const idx = r.readUnsigned(6);
-            chars.push(alphabet[idx] ?? '-');
-          }
-          title = chars.join("").trim();
-        }
-      } catch {}
+  // ここまで来たらMTG以外の形式
+  throw new Error("Unsupported segment: MTG v1 only");
+};
 
-      const atoms: ShareAtom[] = [];
-      let px = 0, py = 0, pz = 0;
-      for (let i = 0; i < atomCount; i += 1) {
-        const di = r.readUnsigned(idxBits);
-        const code = dict[di] ?? 6; // default to C if missing
-        const dx = r.readSigned(coordBits);
-        const dy = r.readSigned(coordBits);
-        const dz = r.readSigned(coordBits);
-        if (i === 0 || deltaFlag === 0) {
-          px = dx; py = dy; pz = dz;
-        } else {
-          px += dx; py += dy; pz += dz;
-        }
-        atoms.push([
-          codeToSymbol(code),
-          (px / 1000) * M,
-          (py / 1000) * M,
-          (pz / 1000) * M,
-        ]);
-      }
-
-      let bonds: ShareBond[] = [];
-      if (omitBondsFlag === 1) {
-        const inferred = guessBonds(
-          atoms.map((a) => ({ symbol: a[0], x: a[1], y: a[2], z: a[3] }))
-        );
-        bonds = inferred.map((b) => [b.i, b.j, b.order]);
-      } else {
-        for (let k = 0; k < bondCount; k += 1) {
-          const i = r.readUnsigned(indexBits);
-          const j = r.readUnsigned(indexBits);
-          const ob = r.readUnsigned(2);
-          const order = ob === 0b01 ? 1 : ob === 0b10 ? 2 : 3;
-          bonds.push([i, j, order]);
-        }
-      }
-
-      const materialMap: Record<number, StyleSettings["material"]> = {
-        0: "standard",
-        1: "metal",
-        2: "toon",
-        3: "glass",
-      };
-      const style: ShareStyle = {
-        material: materialMap[material2] ?? "standard",
-        atomScale: atomScaleQ6 * 0.02,
-        bondRadius: bondRadiusQ6 * 0.02,
-        quality: (quality2 === 0 ? "low" : quality2 === 1 ? "medium" : quality2 === 2 ? "high" : "ultra") as ShareStyle["quality"],
-      } as ShareStyle;
-
-      const payload: SharePayload = { v: 2, atoms, bonds, style, meta: title ? { title } : undefined };
-      return { payload, molecule: toMolecule(payload), style };
+export const decodeShareSegmentEncrypted = async (
+  segment: string,
+  password: string,
+): Promise<DecodedShare> => {
+  // Base80 decode (MTG専用)
+  let bytes: Uint8Array;
+  try { bytes = fromBase80(segment); } catch { throw new Error("Invalid Base80 segment"); }
+  if (bytes.byteLength < 4) throw new Error("Invalid segment");
+  const magic3 = String.fromCharCode(bytes[0], bytes[1], bytes[2]);
+  const vflags = bytes[3];
+  const ver = (vflags >>> 4) & 0x0f;
+  const flags = vflags & 0x0f;
+  if (magic3 !== "MTG" || ver !== 1 || (flags & 0x01) === 0) {
+    throw new Error("Not an encrypted MT v1 segment");
+  }
+  // Fixed sizes: salt(16), iv(12), ct(rest)
+  if (bytes.byteLength < 4 + 16 + 12 + 16) {
+    throw new Error("Encrypted segment too short");
+  }
+  const salt = bytes.subarray(4, 4 + 16);
+  const iv = bytes.subarray(4 + 16, 4 + 16 + 12);
+  const ct = bytes.subarray(4 + 16 + 12);
+  const iterations = 100000;
+  const key = await importKeyFromPasswordPBKDF2(password, salt, iterations);
+  let plain: Uint8Array;
+  try {
+    plain = await aesGcmDecrypt(key, iv, ct);
+  } catch (e) {
+    const err = e as Error;
+    if (err && err.name === 'OperationError') {
+      throw new Error("Wrong password or data corrupted");
     }
-    if (magic === "QRM" && version === 6) {
-      const r = new BitReader(u8.subarray(4));
-      const atomCount = r.readUnsigned(10);
-      const bondCount = r.readUnsigned(12);
-      const e = r.readUnsigned(2);
-      const coordBits = 8 + r.readUnsigned(4);
-      const material2 = r.readUnsigned(2);
-      const atomScaleQ6 = r.readUnsigned(6);
-      const bondRadiusQ6 = r.readUnsigned(6);
-      const quality2 = r.readUnsigned(2);
-      const deltaFlag = r.readUnsigned(1);
-      const omitBondsFlag = r.readUnsigned(1);
-      const U = r.readUnsigned(7);
-      const dict: number[] = [];
-      for (let i = 0; i < U; i += 1) dict.push(r.readUnsigned(7));
-      const idxBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, U))));
-      const indexBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, atomCount))));
-      const M = 1 << e;
-
-      const atoms: ShareAtom[] = [];
-      let px = 0, py = 0, pz = 0;
-      for (let i = 0; i < atomCount; i += 1) {
-        const di = r.readUnsigned(idxBits);
-        const code = dict[di] ?? 6; // default to C if missing
-        const dx = r.readSigned(coordBits);
-        const dy = r.readSigned(coordBits);
-        const dz = r.readSigned(coordBits);
-        if (i === 0 || deltaFlag === 0) {
-          px = dx; py = dy; pz = dz;
-        } else {
-          px += dx; py += dy; pz += dz;
-        }
-        atoms.push([
-          codeToSymbol(code),
-          (px / 1000) * M,
-          (py / 1000) * M,
-          (pz / 1000) * M,
-        ]);
-      }
-
-      let bonds: ShareBond[] = [];
-      if (omitBondsFlag === 1) {
-        const inferred = guessBonds(
-          atoms.map((a) => ({ symbol: a[0], x: a[1], y: a[2], z: a[3] }))
-        );
-        bonds = inferred.map((b) => [b.i, b.j, b.order]);
-      } else {
-        for (let k = 0; k < bondCount; k += 1) {
-          const i = r.readUnsigned(indexBits);
-          const j = r.readUnsigned(indexBits);
-          const ob = r.readUnsigned(2);
-          const order = ob === 0b01 ? 1 : ob === 0b10 ? 2 : 3;
-          bonds.push([i, j, order]);
-        }
-      }
-
-      const materialMap: Record<number, StyleSettings["material"]> = {
-        0: "standard",
-        1: "metal",
-        2: "toon",
-        3: "glass",
-      };
-      const style: ShareStyle = {
-        material: materialMap[material2] ?? "standard",
-        atomScale: atomScaleQ6 * 0.02,
-        bondRadius: bondRadiusQ6 * 0.02,
-        quality: (quality2 === 0 ? "low" : quality2 === 1 ? "medium" : quality2 === 2 ? "high" : "ultra") as ShareStyle["quality"],
-      } as ShareStyle;
-
-      const payload: SharePayload = { v: 2, atoms, bonds, style };
-      return { payload, molecule: toMolecule(payload), style };
-    }
-    if (magic === "QRM" && version === 5) {
-      const r = new BitReader(u8.subarray(4));
-      const atomCount = r.readUnsigned(10);
-      const bondCount = r.readUnsigned(12);
-      const e = r.readUnsigned(2);
-      const material2 = r.readUnsigned(2);
-      const atomScaleQ6 = r.readUnsigned(6);
-      const bondRadiusQ6 = r.readUnsigned(6);
-      const quality2 = r.readUnsigned(2);
-      const deltaFlag = r.readUnsigned(1);
-      const omitBondsFlag = r.readUnsigned(1);
-      const U = r.readUnsigned(7);
-      const dict: number[] = [];
-      for (let i = 0; i < U; i += 1) dict.push(r.readUnsigned(7));
-      const idxBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, U))));
-      const indexBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, atomCount))));
-      const M = 1 << e;
-
-      const atoms: ShareAtom[] = [];
-      let px = 0, py = 0, pz = 0;
-      for (let i = 0; i < atomCount; i += 1) {
-        const di = r.readUnsigned(idxBits);
-        const code = dict[di] ?? 6; // Z=6 (C) fallback
-        const dx = r.readSigned(16);
-        const dy = r.readSigned(16);
-        const dz = r.readSigned(16);
-        if (i === 0 || deltaFlag === 0) {
-          px = dx; py = dy; pz = dz;
-        } else {
-          px += dx; py += dy; pz += dz;
-        }
-        atoms.push([
-          codeToSymbol(code),
-          (px / 1000) * M,
-          (py / 1000) * M,
-          (pz / 1000) * M,
-        ]);
-      }
-
-      let bonds: ShareBond[] = [];
-      if (omitBondsFlag === 1) {
-        // Infer bonds from atoms when omitted
-        const inferred = guessBonds(
-          atoms.map((a) => ({ symbol: a[0], x: a[1], y: a[2], z: a[3] }))
-        );
-        bonds = inferred.map((b) => [b.i, b.j, b.order]);
-      } else {
-        for (let k = 0; k < bondCount; k += 1) {
-          const i = r.readUnsigned(indexBits);
-          const j = r.readUnsigned(indexBits);
-          const ob = r.readUnsigned(2);
-          const order = ob === 0b01 ? 1 : ob === 0b10 ? 2 : 3;
-          bonds.push([i, j, order]);
-        }
-      }
-
-      const materialMap: Record<number, StyleSettings["material"]> = {
-        0: "standard",
-        1: "metal",
-        2: "toon",
-        3: "glass",
-      };
-      const style: ShareStyle = {
-        material: materialMap[material2] ?? "standard",
-        atomScale: atomScaleQ6 * 0.02,
-        bondRadius: bondRadiusQ6 * 0.02,
-        quality: (quality2 === 0 ? "low" : quality2 === 1 ? "medium" : quality2 === 2 ? "high" : "ultra") as ShareStyle["quality"],
-      } as ShareStyle;
-
-      const payload: SharePayload = { v: 2, atoms, bonds, style };
-      return { payload, molecule: toMolecule(payload), style };
-    }
-  if (magic === "QRM" && version === 4) {
-      const r = new BitReader(u8.subarray(4));
+    throw err;
+  }
+  // Decrypted bytes are deflate-compressed inner bitstream; inflate first
+  const inflated = inflate(plain);
+  const u8 = new Uint8Array(inflated);
+  const r = new BitReader(u8);
   const atomCount = r.readUnsigned(10);
   const bondCount = r.readUnsigned(12);
   const e = r.readUnsigned(2);
+  const coordBits = 8 + r.readUnsigned(4);
   const material2 = r.readUnsigned(2);
-      const atomScaleQ6 = r.readUnsigned(6);
-      const bondRadiusQ6 = r.readUnsigned(6);
-      const quality2 = r.readUnsigned(2);
-      const deltaFlag = r.readUnsigned(1); // currently 1
-      const U = r.readUnsigned(7);
-      const dict: number[] = [];
-      for (let i = 0; i < U; i += 1) dict.push(r.readUnsigned(7));
-      const idxBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, U))));
-      const indexBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, atomCount))));
-      const M = 1 << e;
+  const atomScaleQ6 = r.readUnsigned(6);
+  const bondRadiusQ6 = r.readUnsigned(6);
+  const quality2 = r.readUnsigned(2);
+  const deltaFlag = r.readUnsigned(1);
+  const omitBondsFlag = r.readUnsigned(1);
+  const U = r.readUnsigned(7);
+  const dict: number[] = [];
+  for (let i = 0; i < U; i += 1) dict.push(r.readUnsigned(7));
+  const idxBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, U))));
+  const indexBits = Math.max(1, Math.ceil(Math.log2(Math.max(1, atomCount))));
+  const M = 1 << e;
 
-      const atoms: ShareAtom[] = [];
-      let px = 0, py = 0, pz = 0;
-      for (let i = 0; i < atomCount; i += 1) {
-        const di = r.readUnsigned(idxBits);
-  const code = dict[di] ?? 6; // Z=6 (C) fallback
-        const dx = r.readSigned(16);
-        const dy = r.readSigned(16);
-        const dz = r.readSigned(16);
-        if (i === 0 || deltaFlag === 0) {
-          px = dx; py = dy; pz = dz;
-        } else {
-          px += dx; py += dy; pz += dz;
-        }
-        atoms.push([
-          codeToSymbol(code),
-          (px / 1000) * M,
-          (py / 1000) * M,
-          (pz / 1000) * M,
-        ]);
-      }
-
-      const bonds: ShareBond[] = [];
-      for (let k = 0; k < bondCount; k += 1) {
-        const i = r.readUnsigned(indexBits);
-        const j = r.readUnsigned(indexBits);
-        const ob = r.readUnsigned(2);
-        const order = ob === 0b01 ? 1 : ob === 0b10 ? 2 : 3;
-        bonds.push([i, j, order]);
-      }
-
-      const materialMap: Record<number, StyleSettings["material"]> = {
-        0: "standard",
-        1: "metal",
-        2: "toon",
-        3: "glass",
-      };
-      const style: ShareStyle = {
-        material: materialMap[material2] ?? "standard",
-        atomScale: atomScaleQ6 * 0.02,
-        bondRadius: bondRadiusQ6 * 0.02,
-        quality: (quality2 === 0 ? "low" : quality2 === 1 ? "medium" : quality2 === 2 ? "high" : "ultra") as ShareStyle["quality"],
-      } as ShareStyle;
-
-      const payload: SharePayload = { v: 2, atoms, bonds, style };
-      return { payload, molecule: toMolecule(payload), style };
+  // Optional title
+  let title: string | undefined;
+  try {
+    const flag = r.readUnsigned(1);
+    if (flag === 1) {
+      const len = r.readUnsigned(6);
+      const alphabet = (() => {
+        const arr: string[] = [' ', '-'];
+        for (let i = 0; i < 10; i++) arr.push(String(i));
+        for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(65 + i));
+        for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(97 + i));
+        return arr;
+      })();
+      const chars: string[] = [];
+      for (let i = 0; i < len; i++) chars.push(alphabet[r.readUnsigned(6)] ?? '-');
+      title = chars.join("").trim();
     }
-  if (magic === "QRM" && version === 3) {
-      const r = new BitReader(u8.subarray(4));
-      const atomCount = r.readUnsigned(10);
-      const bondCount = r.readUnsigned(12);
-  const modeBit = r.readUnsigned(1);
-      const atomScaleQ = r.readUnsigned(8);
-      const bondRadiusQ = r.readUnsigned(8);
-      const quality2 = r.readUnsigned(2);
+  } catch {}
 
-      const atoms: ShareAtom[] = [];
-      for (let i = 0; i < atomCount; i += 1) {
-  const code = r.readUnsigned(7);
-        const fx = r.readSigned(18);
-        const fy = r.readSigned(18);
-        const fz = r.readSigned(18);
-        atoms.push([
-          codeToSymbolLegacy(code),
-          fx / 1000,
-          fy / 1000,
-          fz / 1000,
-        ]);
-      }
+  const atoms: ShareAtom[] = [];
+  let px = 0, py = 0, pz = 0;
+  for (let i = 0; i < atomCount; i += 1) {
+    const di = r.readUnsigned(idxBits);
+    const code = dict[di] ?? 6;
+    const dx = r.readSigned(coordBits);
+    const dy = r.readSigned(coordBits);
+    const dz = r.readSigned(coordBits);
+    if (i === 0 || deltaFlag === 0) { px = dx; py = dy; pz = dz; } else { px += dx; py += dy; pz += dz; }
+    atoms.push([
+      codeToSymbol(code),
+      (px / 1000) * M,
+      (py / 1000) * M,
+      (pz / 1000) * M,
+    ]);
+  }
 
-      const bonds: ShareBond[] = [];
-      for (let k = 0; k < bondCount; k += 1) {
-        const i = r.readUnsigned(10);
-        const j = r.readUnsigned(10);
-        const ob = r.readUnsigned(2);
-        const order = ob === 0b01 ? 1 : ob === 0b10 ? 2 : 3;
-        bonds.push([i, j, order]);
-      }
-
-      const style: ShareStyle = {
-        // v3にはmaterial概念がないため標準に固定
-        material: "standard",
-        atomScale: atomScaleQ / 100,
-        bondRadius: bondRadiusQ / 100,
-        quality: (quality2 === 0 ? "low" : quality2 === 2 ? "high" : "medium") as ShareStyle["quality"],
-      } as ShareStyle;
-
-      const payload: SharePayload = {
-        v: 2,
-        atoms,
-        bonds,
-        style,
-      };
-      return { payload, molecule: toMolecule(payload), style };
+  let bonds: ShareBond[] = [];
+  if (omitBondsFlag === 1) {
+    const inferred = guessBonds(atoms.map((a) => ({ symbol: a[0], x: a[1], y: a[2], z: a[3] })));
+    bonds = inferred.map((b) => [b.i, b.j, b.order]);
+  } else {
+    for (let k = 0; k < bondCount; k += 1) {
+      const i = r.readUnsigned(indexBits);
+      const j = r.readUnsigned(indexBits);
+      const ob = r.readUnsigned(2);
+      const order = ob === 0b01 ? 1 : ob === 0b10 ? 2 : 3;
+      bonds.push([i, j, order]);
     }
   }
 
-  // Fallback to JSON v2
-  const json = decoder.decode(raw);
-  const parsed = JSON.parse(json) as SharePayload;
-  if (!isSharePayload(parsed)) {
-    throw new Error("Unsupported share payload format");
-  }
-  return { payload: parsed, molecule: toMolecule(parsed), style: parsed.style };
+  const materialMap: Record<number, StyleSettings["material"]> = { 0: "standard", 1: "metal", 2: "toon", 3: "glass" };
+  const style: ShareStyle = {
+    material: materialMap[material2] ?? "standard",
+    atomScale: atomScaleQ6 * 0.02,
+    bondRadius: bondRadiusQ6 * 0.02,
+    quality: (quality2 === 0 ? "low" : quality2 === 1 ? "medium" : quality2 === 2 ? "high" : "ultra") as ShareStyle["quality"],
+  } as ShareStyle;
+  const payload: SharePayload = { v: 2, atoms, bonds, style, meta: title ? { title } : undefined };
+  return { payload, molecule: toMolecule(payload), style };
 };

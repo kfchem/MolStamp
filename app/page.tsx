@@ -10,7 +10,7 @@ import { QrMaker } from "@/components/QrMaker";
 import { APP_NAME, TAGLINE } from "@/lib/branding";
 import { parseSdf } from "@/lib/parse/parseSdf";
 import { parseXyz } from "@/lib/parse/parseXyz";
-import { encodeShareData, buildShareUrl } from "@/lib/share/encode";
+import { encodeShareData, encodeShareDataEncrypted, buildShareUrl } from "@/lib/share/encode";
 import type { Molecule, MoleculeFormat, StyleSettings } from "@/lib/chem/types";
 
 const DEFAULT_STYLE: StyleSettings = {
@@ -69,6 +69,8 @@ const HomePage = () => {
   const [coarseCoords, setCoarseCoords] = useState<boolean>(false);
   const [useDelta, setUseDelta] = useState<boolean>(false);
   const [title, setTitle] = useState<string>("");
+  const [encrypt, setEncrypt] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>("");
   // Coordinate precision: number of LSBs to drop (0..8)
   const [precisionDrop, setPrecisionDrop] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(0);
 
@@ -85,6 +87,15 @@ const HomePage = () => {
   setFileMeta({ name: payload.file.name, size: payload.file.size });
   // タイトルはデフォルト空欄（ユーザー任意入力）
   setTitle("");
+
+      // 入力形式に応じて Bond data の既定を切り替え
+      // XYZ: ファイルに結合情報がないため自動生成（omitBonds=true）
+      // SDF: 結合データを含むためそのまま含める（omitBonds=false）
+      if (payload.format === "xyz") {
+        setOmitBonds(true);
+      } else {
+        setOmitBonds(false);
+      }
 
       const large = parsed.atoms.length > LARGE_ATOM_THRESHOLD;
       setStyle({
@@ -111,9 +122,18 @@ const HomePage = () => {
       setShareState(null);
       return;
     }
-    const id = setTimeout(() => {
+    const id = setTimeout(async () => {
       try {
-  const { encoded, byteLength, scaleExp } = encodeShareData({ molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title });
+        const useEnc = encrypt && password.trim().length >= 4;
+        if (useEnc) {
+          const hasCrypto = typeof globalThis !== 'undefined' && (globalThis as any).crypto && (globalThis as any).crypto.subtle;
+          if (!hasCrypto) {
+            throw new Error("Encryption requires Web Crypto (HTTPS). Disable encryption or open this page over HTTPS.");
+          }
+        }
+        const { encoded, byteLength, scaleExp } = useEnc
+          ? await encodeShareDataEncrypted({ molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title, password: password.trim() })
+          : encodeShareData({ molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title });
         const origin = typeof window !== "undefined" ? window.location.origin : "";
   const fallbackOrigin = "https://m2go.kfchem.dev";
         const url = buildShareUrl(origin || fallbackOrigin, encoded);
@@ -126,7 +146,7 @@ const HomePage = () => {
       }
     }, 600);
     return () => clearTimeout(id);
-  }, [molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title]);
+  }, [molecule, style, omitBonds, coarseCoords, precisionDrop, useDelta, title, encrypt, password]);
 
   const headerSubtitle = useMemo(() => {
     if (!molecule || !fileMeta) {
@@ -177,7 +197,6 @@ const HomePage = () => {
               ) : (
                 <p className="text-sm leading-6 text-slate-600">
                   {headerSubtitle}
-                  <span className="text-slate-500"> • Everything runs locally in your browser</span>
                 </p>
               )}
             </div>
@@ -265,6 +284,10 @@ const HomePage = () => {
                 onChangePrecisionDrop={setPrecisionDrop}
                 useDelta={useDelta}
                 onChangeUseDelta={setUseDelta}
+                encrypt={encrypt}
+                onChangeEncrypt={setEncrypt}
+                password={password}
+                onChangePassword={setPassword}
             />
           </div>
       </div>

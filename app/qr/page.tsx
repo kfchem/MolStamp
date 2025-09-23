@@ -5,10 +5,11 @@ import type { Group } from "three";
 import { Viewer } from "@/components/Viewer";
 import { OptionsPanel } from "@/components/OptionsPanel";
 import { APP_NAME, TAGLINE } from "@/lib/branding";
-import { decodeShareSegment } from "@/lib/share/decode";
+import { decodeShareSegment, decodeShareSegmentEncrypted } from "@/lib/share/decode";
 import type { Molecule, StyleSettings } from "@/lib/chem/types";
 import type { DetailedHTMLProps, HTMLAttributes, ReactElement } from "react";
-import { CubeIcon, AdjustmentsHorizontalIcon, XMarkIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { CubeIcon, AdjustmentsHorizontalIcon, XMarkIcon, ArrowPathIcon, LockClosedIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import { AnimatePresence, motion } from "framer-motion";
 
 const DEFAULT_STYLE: StyleSettings = {
   material: "standard",
@@ -42,6 +43,12 @@ const ShareQrPage = () => {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const optionsBtnRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const [encPayload, setEncPayload] = useState<string | null>(null);
+  const [pw, setPw] = useState<string>("");
+  const [pwBusy, setPwBusy] = useState<boolean>(false);
+  const [pwErr, setPwErr] = useState<string | null>(null);
+  const [pwShake, setPwShake] = useState<boolean>(false);
+  const supportsSubtle = typeof globalThis !== 'undefined' && (globalThis as any).crypto && (globalThis as any).crypto.subtle;
 
   const subtitle = useMemo(() => {
     if (loading) return "Decoding shared payload...";
@@ -59,10 +66,17 @@ const ShareQrPage = () => {
     const titleText = t && t.trim().length > 0 ? `${t}` : `${APP_NAME}`;
     document.title = titleText;
   }, []);
+  // Delayed title application to avoid race with initial load/hydration
+  const applyDocTitleLater = useCallback((t?: string | null, delay = 220) => {
+    if (typeof window === "undefined") return;
+    const id = window.setTimeout(() => applyDocTitle(t ?? null), Math.max(0, delay));
+    return () => window.clearTimeout(id);
+  }, [applyDocTitle]);
 
   useEffect(() => {
-    applyDocTitle(molecule?.title ?? null);
-  }, [applyDocTitle, molecule?.title]);
+    const cancel = applyDocTitleLater(molecule?.title ?? null, 220);
+    return () => { if (typeof cancel === 'function') cancel(); };
+  }, [applyDocTitleLater, molecule?.title]);
 
   // Decode from URL hash
   useEffect(() => {
@@ -76,18 +90,23 @@ const ShareQrPage = () => {
         return;
       }
       try {
-  const decoded = decodeShareSegment(payload);
-  // Update title ASAP after decode
-  applyDocTitle(decoded.molecule.title ?? null);
+    const decoded = decodeShareSegment(payload);
+    // Update title with a slight delay to avoid race with hydration
+    applyDocTitleLater(decoded.molecule.title ?? null, 220);
         setMolecule(decoded.molecule);
         setStyle({ ...decoded.style });
         setError(null);
       } catch (e) {
-        console.error(e);
-        setError(
-          "Invalid or corrupted QR payload. Please request a new QR code.",
-        );
-        setMolecule(null);
+        const msg = (e as Error)?.message || "";
+        if (/password required/i.test(msg)) {
+          setEncPayload(payload);
+          setError(null);
+          setMolecule(null);
+        } else {
+          console.error(e);
+          setError("Invalid or corrupted QR payload. Please request a new QR code.");
+          setMolecule(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -232,8 +251,107 @@ const ShareQrPage = () => {
   // Panel morphs as a rounded rectangle from the top-right corner (near the toggle)
   // no motion variants: simple sheet
 
+  const tryDecrypt = useCallback(async () => {
+    if (!encPayload) return;
+    const trimmed = pw.trim();
+    if (trimmed.length < 4) {
+      setPwErr("Enter at least 4 characters");
+      setPwShake(true);
+      setTimeout(() => setPwShake(false), 350);
+      return;
+    }
+    if (!supportsSubtle) {
+      setPwErr("Encryption requires Web Crypto (HTTPS). Open this page over HTTPS.");
+      setPwShake(true);
+      setTimeout(() => setPwShake(false), 350);
+      return;
+    }
+    setPwBusy(true);
+    setPwErr(null);
+    try {
+      const decoded = await decodeShareSegmentEncrypted(encPayload, trimmed);
+      // Delay title to align with post-decrypt rendering
+      applyDocTitleLater(decoded.molecule.title ?? null, 180);
+      setMolecule(decoded.molecule);
+      setStyle({ ...decoded.style });
+      setError(null);
+      setEncPayload(null);
+    } catch (err) {
+      const m = (err as Error)?.message || "";
+      if (/wrong password/i.test(m)) setPwErr("Wrong password or data corrupted"); else setPwErr("Failed to decrypt");
+      setPwShake(true);
+      setTimeout(() => setPwShake(false), 350);
+    } finally {
+      setPwBusy(false);
+    }
+  }, [applyDocTitle, decodeShareSegmentEncrypted, encPayload, pw, supportsSubtle]);
+
   return (
     <main className="relative min-h-screen w-screen overflow-hidden bg-white">
+      {/* Password overlay for encrypted payloads (simplified + motion) */}
+      <AnimatePresence>
+        {encPayload ? (
+          <motion.div
+            className="absolute inset-0 z-[70]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="grid h-full w-full place-items-center bg-white/70 backdrop-blur">
+              <motion.div
+                className="w-[min(92vw,420px)] rounded-2xl bg-white/90 p-5 shadow-xl ring-1 ring-slate-200/80 backdrop-blur-md"
+                initial={{ y: 18, opacity: 0, scale: 0.98 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 12, opacity: 0, scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 260, damping: 22 }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-sky-600 ring-1 ring-sky-200">
+                    <LockClosedIcon className="h-4 w-4" />
+                  </div>
+                  <h2 className="text-base font-semibold tracking-wide text-slate-900">Encrypted</h2>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">Enter password to view.</p>
+                <motion.div
+                  className="mt-3 relative"
+                  animate={pwShake ? { x: [0, -6, 6, -4, 4, -2, 2, 0] } : { x: 0 }}
+                  transition={{ duration: 0.35, ease: "easeInOut" }}
+                >
+                  <input
+                    type="password"
+                    className={`h-9 w-full rounded-md bg-white/95 pl-2 pr-10 text-sm text-slate-800 placeholder:text-slate-400 shadow-inner ring-1 focus:outline-none ${pwErr || pwShake ? "ring-rose-300" : "ring-slate-200 focus:ring-sky-300"}`}
+                    placeholder="Password"
+                    value={pw}
+                    onChange={(e)=>{ setPw(e.target.value); setPwErr(null); }}
+                    onKeyDown={(e)=>{ if (e.key === "Enter") { e.preventDefault(); tryDecrypt(); } }}
+                    disabled={pwBusy}
+                    aria-invalid={Boolean(pwErr)}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Decrypt"
+                    onClick={tryDecrypt}
+                    disabled={pwBusy || pw.trim().length < 4 || !supportsSubtle}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white/90 text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {pwBusy ? (
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <motion.span whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.96 }} className="inline-flex">
+                        <ArrowRightIcon className="h-4 w-4" />
+                      </motion.span>
+                    )}
+                  </button>
+                </motion.div>
+                {(!supportsSubtle && !pwErr) ? (
+                  <div className="mt-2 text-xs text-amber-700">Encryption/decryption requires a secure context. Please open this page over HTTPS.</div>
+                ) : null}
+                {pwErr ? <div className="mt-2 text-xs text-rose-700">{pwErr}</div> : null}
+              </motion.div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       {/* Fullscreen viewer */}
       {/* Title overlay (top-left) */}
       {molecule?.title ? (

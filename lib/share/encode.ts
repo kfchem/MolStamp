@@ -4,8 +4,7 @@ import { toBase80 } from "../util/base80";
 import { BitWriter } from "./bitstream";
 import { SHARE_BASE_URL } from "./baseUrl";
 import { symbolToCode } from "./codebook";
-
-const encoder = new TextEncoder();
+import { aesGcmEncrypt, importKeyFromPasswordPBKDF2, randomBytes } from "../util/crypto";
 
 export type ShareStyle = Pick<
   StyleSettings,
@@ -19,30 +18,17 @@ export type SharePayloadV2 = {
   atoms: ShareAtom[];
   bonds: ShareBond[];
   style: ShareStyle;
-  meta?: {
-    title?: string;
-  };
+  meta?: { title?: string };
 };
-
 export type SharePayload = SharePayloadV2;
 
 export type ShareInput = {
   molecule: Molecule;
   style: ShareStyle;
-  // When true, omit bonds from the compact bitstream and let decoder infer them.
-  // Useful to shrink payload size for large molecules.
   omitBonds?: boolean;
-  // When true, reduce coordinate precision by 1 bit (divide fixed-point ints by 2)
-  // to improve compressibility and QR fit at the cost of slight positional loss.
   coarseCoords?: boolean;
-  // Preferred: number of LSBs to drop from fixed-point coordinates (0..8)
-  // Rounds to nearest multiple of 2^n while keeping overall scale the same.
   precisionDrop?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-  // When false, do not use deltas; write absolute quantized coords for every atom.
-  // Default false for robustness and to avoid long-jump surprises across components.
   useDelta?: boolean;
-  // Optional short title to embed in the compact payload (v7+). Will be sanitized
-  // to a 64-character alphabet and limited to 63 chars to minimize overhead.
   title?: string;
 };
 
@@ -50,50 +36,12 @@ export type ShareEncodingResult = {
   encoded: string;
   byteLength: number;
   payload: SharePayload;
-  // scale exponent e where M = 2^e
   scaleExp: number;
 };
 
 const round4 = (value: number): number => Number(value.toFixed(4));
+const ceilLog2 = (n: number): number => Math.max(0, Math.ceil(Math.log2(Math.max(1, n))));
 
-const centreAtoms = (atoms: Molecule["atoms"]): ShareAtom[] => {
-  if (atoms.length === 0) return [];
-  const centroid = atoms.reduce(
-    (acc, atom) => {
-      acc.x += atom.x;
-      acc.y += atom.y;
-      acc.z += atom.z;
-      return acc;
-    },
-    { x: 0, y: 0, z: 0 },
-  );
-  centroid.x /= atoms.length;
-  centroid.y /= atoms.length;
-  centroid.z /= atoms.length;
-
-  return atoms.map((atom) => {
-    const centred: ShareAtom = [
-      atom.symbol,
-      round4(atom.x - centroid.x),
-      round4(atom.y - centroid.y),
-      round4(atom.z - centroid.z),
-    ];
-    if (typeof atom.charge === "number" && atom.charge !== 0) {
-      centred.push(atom.charge);
-    }
-    return centred;
-  });
-};
-
-const mapBonds = (bonds: Molecule["bonds"]): ShareBond[] =>
-  bonds.map((bond) => [bond.i, bond.j, bond.order]);
-
-const ceilLog2 = (n: number): number => {
-  if (n <= 1) return 0;
-  return Math.ceil(Math.log2(n));
-};
-
-// 64-char compact title alphabet: [space, '-', 0-9, A-Z, a-z]
 const TITLE_ALPHABET = (() => {
   const arr: string[] = [' ', '-'];
   for (let i = 0; i < 10; i++) arr.push(String(i));
@@ -101,42 +49,56 @@ const TITLE_ALPHABET = (() => {
   for (let i = 0; i < 26; i++) arr.push(String.fromCharCode(97 + i));
   return arr;
 })();
-const TITLE_INDEX: Record<string, number> = Object.fromEntries(
-  TITLE_ALPHABET.map((ch, i) => [ch, i])
-);
-const sanitizeTitle = (s: string | undefined | null): string => {
-  if (!s) return "";
-  let out = "";
-  for (const ch of s) {
-    if (ch in TITLE_INDEX) {
-      out += ch;
-    } else {
-      // map common spaces to space; others to '-'
-      if (/\s/.test(ch)) out += ' ';
-      else out += '-';
-    }
+const TITLE_INDEX = TITLE_ALPHABET.reduce<Record<string, number>>((acc, ch, i) => {
+  acc[ch] = i;
+  return acc;
+}, {});
+const sanitizeTitle = (title?: string): string | undefined => {
+  if (!title) return undefined;
+  const trimmed = title.trim();
+  if (!trimmed) return undefined;
+  const out: string[] = [];
+  for (const ch of trimmed) {
+    out.push(TITLE_INDEX[ch] != null ? ch : '-');
     if (out.length >= 63) break;
   }
-  // trim excessive spaces/hyphens at ends
-  out = out.replace(/\s{2,}/g, ' ').replace(/^-+/, '').replace(/-+$/, '').trim();
-  return out.slice(0, 63);
+  return out.join("");
 };
 
-export const encodeShareData = ({
-  molecule,
-  style,
-  omitBonds = false,
-  coarseCoords = false,
-  precisionDrop,
-  useDelta = false,
-  title,
-}: ShareInput): ShareEncodingResult => {
-  // v5 ultra-compact base with BFS reorder; now extend to v6 for variable coord bits
+const centreAtoms = (atoms: Molecule["atoms"]): ShareAtom[] => {
+  if (atoms.length === 0) return [];
+  const centroid = atoms.reduce(
+    (acc, a) => ({ x: acc.x + a.x, y: acc.y + a.y, z: acc.z + a.z }),
+    { x: 0, y: 0, z: 0 },
+  );
+  centroid.x /= atoms.length; centroid.y /= atoms.length; centroid.z /= atoms.length;
+  return atoms.map((atom) => {
+    const centred: ShareAtom = [
+      atom.symbol,
+      round4(atom.x - centroid.x),
+      round4(atom.y - centroid.y),
+      round4(atom.z - centroid.z),
+    ];
+    if (typeof atom.charge === "number" && atom.charge !== 0) centred.push(atom.charge);
+    return centred;
+  });
+};
+
+const mapBonds = (bonds: Array<{ i: number; j: number; order: number }>): ShareBond[] =>
+  bonds.map((b) => [b.i, b.j, (b.order as 1 | 2 | 3) ?? 1]);
+
+const buildInnerBitstream = (
+  molecule: Molecule,
+  style: ShareStyle,
+  omitBonds: boolean,
+  coarseCoords: boolean,
+  precisionDrop: ShareInput["precisionDrop"],
+  useDelta: boolean,
+  title?: string,
+) => {
   const atoms = molecule.atoms;
   const bonds = molecule.bonds;
-  // UI向けの見やすい表示用に小数4桁に丸めた中心化座標（送信しないpayload用）
   const centredUi0 = centreAtoms(atoms);
-  // エンコード用はフル精度で中心化（丸めなし）
   const centroid = atoms.reduce(
     (acc, a) => ({ x: acc.x + a.x, y: acc.y + a.y, z: acc.z + a.z }),
     { x: 0, y: 0, z: 0 },
@@ -155,7 +117,7 @@ export const encodeShareData = ({
     return exact;
   });
 
-  // Reorder atoms by BFS along bonds (start at highest-degree atom) to reduce coordinate deltas
+  // Build adjacency
   const N = centredExact0.length;
   const adj: number[][] = Array.from({ length: N }, () => []);
   for (const b of bonds) {
@@ -166,7 +128,6 @@ export const encodeShareData = ({
   }
   const degree = adj.map((lst) => lst.length);
   const visitedGlobal = new Array<boolean>(N).fill(false);
-  // 連結成分を列挙
   const components: number[][] = [];
   for (let i = 0; i < N; i += 1) {
     if (visitedGlobal[i]) continue;
@@ -182,7 +143,6 @@ export const encodeShareData = ({
     }
     components.push(comp);
   }
-  // BFSヘルパ
   const bfsFrom = (start: number, maskVisited: boolean[]): number[] => {
     const out: number[] = [];
     const q: number[] = [start];
@@ -197,10 +157,8 @@ export const encodeShareData = ({
     }
     return out;
   };
-  // 成分の並び順と各成分の起点を決めて最終順序を作成
   const usedComp = new Array<boolean>(components.length).fill(false);
   const order: number[] = [];
-  // 初回: 原点に最も近い原子を含む成分を選ぶ
   let curTail = { x: 0, y: 0, z: 0 };
   let firstComp = -1;
   let firstStart = -1;
@@ -222,7 +180,6 @@ export const encodeShareData = ({
     const a = centredExact0[last]!;
     curTail = { x: a[1], y: a[2], z: a[3] };
   }
-  // 以降: 直前の末尾に最も近い起点を持つ成分を貪欲に選ぶ
   while (usedComp.some((u) => !u)) {
     let bestCi = -1;
     let bestStartIdx = -1;
@@ -255,17 +212,17 @@ export const encodeShareData = ({
     ? bonds.map((b) => ({ i: oldToNew[b.i] ?? b.i, j: oldToNew[b.j] ?? b.j, order: b.order }))
     : bonds.map((b) => ({ i: b.i, j: b.j, order: b.order }));
 
-  // Choose power-of-two global scale M = 2^e so that |x/M|*1000 fits in int16 range
+  // Choose scale exponent e
   let maxAbs = 0;
   for (const a of centredExact) {
     maxAbs = Math.max(maxAbs, Math.abs(a[1]), Math.abs(a[2]), Math.abs(a[3]));
   }
-  const need = maxAbs / 32.767; // since 32767/1000 ≈ 32.767
+  const need = maxAbs / 32.767;
   let e = 0;
   while (e < 3 && (1 << e) < need) e += 1;
   let M = 1 << e;
 
-  // Build dictionary of used species
+  // Dictionary
   const usedCodes: number[] = [];
   const codeIndex = new Map<number, number>();
   for (const a of centredExact) {
@@ -294,11 +251,10 @@ export const encodeShareData = ({
   const qualityMap: Record<StyleSettings["quality"], number> = { low: 0, medium: 1, high: 2, ultra: 3 };
   const quality2 = qualityMap[style.quality] ?? 2;
 
-  // Prepare fixed-point integers with precision drop
+  // Quantization with precision drop
   const dropBits0 = Math.max(0, Math.min(8, precisionDrop ?? (coarseCoords ? 1 : 0)));
   const clamp16 = (v: number) => Math.max(-32768, Math.min(32767, v));
   const step0 = 1 << dropBits0;
-  const roundToStep = (v: number) => clamp16(Math.round(v / step0) * step0);
   const intsX = new Int32Array(atomCount);
   const intsY = new Int32Array(atomCount);
   const intsZ = new Int32Array(atomCount);
@@ -318,7 +274,6 @@ export const encodeShareData = ({
     for (let i = 0; i < atomCount; i += 1) {
       const fx = intsX[i]!, fy = intsY[i]!, fz = intsZ[i]!;
       if (!useDelta) {
-        // Absolute mode: measure absolute values only
         maxAbsCoord = Math.max(maxAbsCoord, Math.abs(fx), Math.abs(fy), Math.abs(fz));
       } else if (i === 0) {
         maxAbsCoord = Math.max(maxAbsCoord, Math.abs(fx), Math.abs(fy), Math.abs(fz));
@@ -340,12 +295,12 @@ export const encodeShareData = ({
   }
   const coordBits = Math.max(8, Math.min(16, neededBits));
 
-  // Write bitstream (v7)
   const w = new BitWriter();
-  w.writeUnsigned("Q".charCodeAt(0), 8);
-  w.writeUnsigned("R".charCodeAt(0), 8);
-  w.writeUnsigned("M".charCodeAt(0), 8);
-  w.writeUnsigned(7, 8);
+  // v1 header (inner bitstream) layout (no magic):
+  // [atomCount:10][bondCount:12][scaleExp e:2][coordBitsMinus8:4]
+  // [material2:2][atomScaleQ6:6][bondRadiusQ6:6][quality2:2]
+  // [deltaFlag:1][omitBondsFlag:1]
+  // [U:7][U*dict(7)]
   w.writeUnsigned(atomCount, 10);
   w.writeUnsigned(bondCount, 12);
   w.writeUnsigned(e, 2);
@@ -354,12 +309,12 @@ export const encodeShareData = ({
   w.writeUnsigned(atomScaleQ6, 6);
   w.writeUnsigned(bondRadiusQ6, 6);
   w.writeUnsigned(quality2, 2);
-  w.writeUnsigned(useDelta ? 1 : 0, 1); // delta flag
+  w.writeUnsigned(useDelta ? 1 : 0, 1);
   w.writeUnsigned(omitBonds ? 1 : 0, 1);
   w.writeUnsigned(U, 7);
   for (let i = 0; i < U; i += 1) w.writeUnsigned(usedCodes[i], 7);
 
-  // Optional compact title block: flag(1), if 1 then len(6) + len*6-bit chars
+  // Optional compact title block: flag(1), len(6), chars*6
   const titleSan = sanitizeTitle(title ?? molecule.title);
   if (titleSan && titleSan.length > 0) {
     w.writeUnsigned(1, 1);
@@ -375,7 +330,7 @@ export const encodeShareData = ({
 
   let px = 0, py = 0, pz = 0;
   for (let i = 0; i < atomCount; i += 1) {
-  const [sym] = centredExact[i];
+    const [sym] = centredExact[i];
     const dictIndex = codeIndex.get(symbolToCode(sym))!;
     w.writeUnsigned(dictIndex, idxBits);
     const fx = intsX[i]!, fy = intsY[i]!, fz = intsZ[i]!;
@@ -392,7 +347,6 @@ export const encodeShareData = ({
     }
   }
 
-  // bonds: i, j with indexBits; order 2 bits
   for (let k = 0; k < bondCount; k += 1) {
     const b = bondsReordered[k];
     const i = Math.max(0, Math.min(atomCount - 1, b.i));
@@ -406,21 +360,87 @@ export const encodeShareData = ({
 
   const binary = w.toUint8Array();
   const compressed = deflate(binary, { level: 9 });
-  const encoded = toBase80(compressed);
 
-  // Minimal v2-style payload for app state (not transmitted)
   const payload: SharePayload = {
     v: 2,
-    atoms: centredUi,
+    atoms: useDelta ? order.map((oi) => centredUi0[oi]!) : centredUi0.slice(),
     bonds: mapBonds(bondsReordered),
     style: { ...style },
     meta: (titleSan && titleSan.length > 0) ? { title: titleSan } : undefined,
   };
+  return { innerCompressed: compressed, payload, scaleExp: e };
+};
 
-  return { encoded, byteLength: compressed.byteLength, payload, scaleExp: e };
+export const encodeShareData = ({
+  molecule,
+  style,
+  omitBonds = false,
+  coarseCoords = false,
+  precisionDrop,
+  useDelta = false,
+  title,
+}: ShareInput): ShareEncodingResult => {
+  const { innerCompressed, payload, scaleExp } = buildInnerBitstream(
+    molecule,
+    style,
+    omitBonds,
+    coarseCoords,
+    precisionDrop,
+    useDelta,
+    title,
+  );
+  // MTG envelope v1 (compact): ['M','T','G', (ver<<4)|(flags4)]
+  // flags4: bit0=enc
+  const ver = 1;
+  const flags4 = 0; // unencrypted
+  const header = new Uint8Array(["M".charCodeAt(0), "T".charCodeAt(0), "G".charCodeAt(0), ((ver & 0x0f) << 4) | (flags4 & 0x0f)]);
+  const out = new Uint8Array(header.byteLength + innerCompressed.byteLength);
+  out.set(header, 0);
+  out.set(innerCompressed, header.byteLength);
+  const encoded = toBase80(out);
+  return { encoded, byteLength: out.byteLength, payload, scaleExp };
 };
 
 export const buildShareUrl = (_origin: string, encoded: string): string => {
   const base = SHARE_BASE_URL.replace(/\/$/, "");
   return `${base}/qr#${encoded}`;
 };
+
+export const encodeShareDataEncrypted = async ({
+  molecule,
+  style,
+  omitBonds = false,
+  coarseCoords = false,
+  precisionDrop,
+  useDelta = false,
+  title,
+  password,
+}: ShareInput & { password: string }): Promise<ShareEncodingResult> => {
+  const { innerCompressed, payload, scaleExp } = buildInnerBitstream(
+    molecule,
+    style,
+    omitBonds,
+    coarseCoords,
+    precisionDrop,
+    useDelta,
+    title,
+  );
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
+  // Fixed PBKDF2 iterations for compact header
+  const iterations = 100000;
+  const key = await importKeyFromPasswordPBKDF2(password, salt, iterations);
+  const ct = await aesGcmEncrypt(key, iv, innerCompressed);
+  // Compact envelope v1 (encrypted): ['M','T','G', (ver<<4)|(flags4=1)], then salt(16)|iv(12)|ct
+  const ver = 1;
+  const flags4 = 0x1; // encrypted
+  const header = new Uint8Array(["M".charCodeAt(0), "T".charCodeAt(0), "G".charCodeAt(0), ((ver & 0x0f) << 4) | (flags4 & 0x0f)]);
+  const out = new Uint8Array(header.byteLength + salt.byteLength + iv.byteLength + ct.byteLength);
+  out.set(header, 0);
+  out.set(salt, header.byteLength + 0);
+  out.set(iv, header.byteLength + salt.byteLength);
+  out.set(ct, header.byteLength + salt.byteLength + iv.byteLength);
+  const encoded = toBase80(out);
+  return { encoded, byteLength: out.byteLength, payload, scaleExp };
+};
+ 
