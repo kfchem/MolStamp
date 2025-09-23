@@ -18,15 +18,12 @@ export type UploadPayload = {
 type UploadDropzoneProps = {
   onFileLoaded: (payload: UploadPayload) => void;
   onError?: (message: string) => void;
-  /**
-   * panel: 既存の独立カードUI
-   * overlay: 子要素を包み、領域全体をドロップ/クリック対象にするラッパー
-   */
+  // panel: standalone card UI; overlay: wraps children and makes area clickable/droppable
   variant?: "panel" | "overlay";
   className?: string;
-  /** オーバーレイ時にクリックでファイル選択を開かない（例: 分子読み込み後のビュー操作のため） */
+  // When overlay, do not open file picker on click (e.g., to interact with viewer)
   disableClick?: boolean;
-  /** ドロップを無効化する（必要に応じて） */
+  // Disable drag-and-drop
   disableDrop?: boolean;
 } & PropsWithChildren;
 
@@ -146,15 +143,12 @@ export const UploadDropzone = ({
           if (!disableClick && (e.key === "Enter" || e.key === " ")) onButtonClick();
         }}
       >
-        {/* 子要素（例: Viewer） */}
         {children}
-        {/* ドラッグ中のオーバーレイ */}
         <div
           className={`pointer-events-none absolute inset-0 rounded-xl border-2 border-dashed transition ${
             isDragging ? "border-sky-400 bg-sky-50/70" : "border-transparent"
           }`}
         />
-        {/* 右上のヒントは中央プレースホルダに統合したため削除 */}
         <input
           ref={inputRef}
           type="file"

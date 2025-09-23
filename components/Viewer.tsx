@@ -85,11 +85,8 @@ type SceneContentProps = {
   molecule: Molecule | null;
   style: StyleSettings;
   onGroupReady?: (group: THREE.Group | null) => void;
-  /** カメラリセットのトリガー（値が変わるたびにfit/lookAtを再適用） */
   resetCameraTick: number;
-  /** 分子サイズに応じたズーム境界の更新を親へ通知 */
   onZoomBounds?: (minD: number, maxD: number) => void;
-  /** 今回のフィットをスムーズに行うか */
   fitSmooth?: boolean;
 };
 
@@ -133,16 +130,12 @@ export const Viewer = ({
   const [dragging, setDragging] = useState(false);
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const startRot = useRef<{ x: number; y: number; z: number } | null>(null);
-  // ユーザーが決めた向きを保持（メッシュ再生成時に適用）
   const orientationQ = useRef<THREE.Quaternion>(new THREE.Quaternion());
-  // ピンチズーム用：アクティブポインタと直近距離
   const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
   const lastPinchDist = useRef<number | null>(null);
-  // CameraControls のズーム境界（分子サイズに応じて再計算）
   const [minDistance, setMinDistance] = useState(0.35);
   const [maxDistance, setMaxDistance] = useState(5000);
   const [fitSmooth, setFitSmooth] = useState(false);
-  // 回転モードに入る瞬間だけアイコンを回すためのキー
   const [spinCount, setSpinCount] = useState(0);
 
   const handleZoomBounds = useCallback((minD: number, maxD: number) => {
@@ -150,10 +143,8 @@ export const Viewer = ({
     setMaxDistance(maxD);
   }, []);
 
-  // onGroupReady をラップして内部参照も保持
   const handleGroupReady = useCallback((g: THREE.Group | null) => {
     groupRef.current = g;
-    // 既存の向きを新しいグループに適用（スタイル変更などで再生成された場合）
     if (g) {
       g.quaternion.copy(orientationQ.current);
       g.updateMatrixWorld(true);
@@ -161,11 +152,9 @@ export const Viewer = ({
     onGroupReady?.(g);
   }, [onGroupReady]);
 
-  // 回転モード開始時にカメラをデフォルト位置へ
   const toggleRotateMode = useCallback(() => {
     setRotateMode((prev) => {
       const next = !prev;
-      // トグル時は常にアイコンを回す（180度）
       setSpinCount((c) => c + 1);
       if (next) {
         setFitSmooth(true);
@@ -175,7 +164,6 @@ export const Viewer = ({
     });
   }, []);
 
-  // スムーズフィットは1回だけ有効にしてすぐ解除
   useEffect(() => {
     if (fitSmooth) {
       const id = setTimeout(() => setFitSmooth(false), 60);
@@ -190,36 +178,33 @@ export const Viewer = ({
     startPos.current = { x: e.clientX, y: e.clientY };
     const r = groupRef.current.rotation;
     startRot.current = { x: r.x, y: r.y, z: r.z };
-    // ピンチ用にポインタ登録
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
   }, [rotateMode]);
 
   const onPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     if (!rotateMode) return;
-    // ピンチジェスチャーを先に処理（2本指）
     if (e.pointerType === 'touch') {
       activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (activePointers.current.size >= 2) {
         const pts = Array.from(activePointers.current.values());
         const d = Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y);
         if (lastPinchDist.current != null && controlsRef.current) {
-          const delta = (lastPinchDist.current - d) * 0.015; // 感度を少し上げる
+          const delta = (lastPinchDist.current - d) * 0.015;
           try { controlsRef.current.dolly?.(delta, true); } catch {}
         }
         lastPinchDist.current = d;
-        return; // ピンチ時はモデル回転は行わない
+        return;
       }
     }
 
     if (!dragging || !groupRef.current || !startPos.current || !startRot.current) return;
     const dx = e.clientX - startPos.current.x;
     const dy = e.clientY - startPos.current.y;
-    const ROT_SENS = 0.018; // 少し感度アップ
-    const yaw = startRot.current.y + dx * ROT_SENS; // 左右ドラッグでY回転
+    const ROT_SENS = 0.018;
+    const yaw = startRot.current.y + dx * ROT_SENS;
     const pitch = THREE.MathUtils.clamp(startRot.current.x + dy * ROT_SENS, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
     groupRef.current.rotation.set(pitch, yaw, startRot.current.z);
     groupRef.current.updateMatrixWorld(true);
-    // 現在の姿勢を保持
     orientationQ.current.copy(groupRef.current.quaternion);
     onOrientationChange?.(orientationQ.current.clone());
   }, [dragging, rotateMode, onOrientationChange]);
@@ -231,7 +216,6 @@ export const Viewer = ({
     setDragging(false);
     startPos.current = null;
     startRot.current = null;
-    // ピンチ状態をクリア
     activePointers.current.delete(e?.pointerId ?? -1);
     if (activePointers.current.size < 2) lastPinchDist.current = null;
     if (groupRef.current) {
@@ -251,7 +235,7 @@ export const Viewer = ({
   const onWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     if (!rotateMode || !controlsRef.current) return;
     e.preventDefault();
-    const delta = -e.deltaY * 0.003; // 感度を少し上げる
+    const delta = -e.deltaY * 0.003;
     try { controlsRef.current.dolly?.(delta, true); } catch {}
   }, [rotateMode]);
 
@@ -265,7 +249,7 @@ export const Viewer = ({
           </div>
         </div>
       )}
-      {/* モデル回転オーバーレイ（モード時のみ） */}
+  {/* Rotation overlay when in rotate mode */}
       {rotateMode && molecule ? (
         <div
           className={`absolute inset-0 z-10 select-none ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
@@ -279,7 +263,7 @@ export const Viewer = ({
         >
         </div>
       ) : null}
-      {/* 左下の回転ボタン（トップページのみ） */}
+  {/* Rotate button (bottom-left) */}
       {showRotateControl && molecule ? (
         <div className="pointer-events-none absolute bottom-3 left-3 z-10">
           <motion.button
@@ -327,14 +311,10 @@ export const Viewer = ({
           ref={controlsRef}
           makeDefault
           enabled
-          // 滑らかなズーム・回転・パン
           smoothTime={0.18}
           draggingSmoothTime={0.12}
-          // カーソル位置に向けてドリー
           dollyToCursor
-          // ズーム感度（大きいほど速い）
           dollySpeed={0.8}
-          // 速度抑制（慣性が強すぎる場合は上げる）
           azimuthRotateSpeed={0.9}
           polarRotateSpeed={0.9}
           truckSpeed={1.0}

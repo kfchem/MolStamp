@@ -20,9 +20,8 @@ const convertInstancedMesh = (instanced: THREE.InstancedMesh) => {
     }
 
   const geometry = instanced.geometry.clone();
-  // 頂点カラーがある場合、マテリアルにvertexColorsを有効化
     // Normalize to MeshStandardMaterial for better USDZ compatibility
-    // 可能な限り元マテリアルの性質を引き継ぐ
+    // Preserve base material props where possible
     const matParams: THREE.MeshStandardMaterialParameters = {
       color: color.getHex(),
     };
@@ -33,17 +32,16 @@ const convertInstancedMesh = (instanced: THREE.InstancedMesh) => {
       if (typeof anyBm.roughness === "number") matParams.roughness = anyBm.roughness;
       if (typeof anyBm.opacity === "number") matParams.opacity = anyBm.opacity;
       if (typeof anyBm.transparent === "boolean") matParams.transparent = anyBm.transparent;
-      // Lambert/Toon はPBRではないため、見た目が近くなるように少しマット寄りに
+      // Approximate Lambert/Toon as matte PBR
       if (anyBm.isMeshLambertMaterial || anyBm.isMeshToonMaterial) {
         matParams.metalness = matParams.metalness ?? 0.0;
         matParams.roughness = matParams.roughness ?? 0.85;
       }
-      // PhysicalはStandardへ写経（clearcoat等はUSDZExporterで限定的サポートのため無視/近似）
+      // Approximate Physical as Standard (ignore features not well-supported by USDZ)
       if (anyBm.isMeshPhysicalMaterial) {
         matParams.metalness = matParams.metalness ?? 0.0;
         matParams.roughness = matParams.roughness ?? 0.35;
       }
-      // 明示的に両面は避ける（Quick Lookで不具合のことがある）
     }
   const material = new THREE.MeshStandardMaterial({ ...matParams, vertexColors: Boolean((geometry as any).attributes?.color) });
     const mesh = new THREE.Mesh(geometry, material);
@@ -81,7 +79,7 @@ const replaceInstancedMeshes = (root: THREE.Object3D) => {
   });
 };
 
-// MeshStandardMaterialへ正規化（非インスタンス用）
+// Normalize to MeshStandardMaterial (non-instanced)
 const normalizeMaterials = (root: THREE.Object3D) => {
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
