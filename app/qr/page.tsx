@@ -45,6 +45,8 @@ const ShareQrPage = () => {
   const [pwErr, setPwErr] = useState<string | null>(null);
   const [pwShake, setPwShake] = useState<boolean>(false);
   const supportsSubtle = typeof globalThis !== 'undefined' && (globalThis as any).crypto && (globalThis as any).crypto.subtle;
+  const [viewerReady, setViewerReady] = useState<boolean>(false);
+  const mountDelayRef = useRef<number | null>(null);
 
   const subtitle = useMemo(() => {
     if (loading) return "Decoding shared payload...";
@@ -74,6 +76,8 @@ const ShareQrPage = () => {
 
   useEffect(() => {
     const processHash = () => {
+      // reset viewer mount until a new payload is processed
+      setViewerReady(false);
       const hash = typeof window !== "undefined" ? window.location.hash : "";
       const payload = hash.startsWith("#") ? hash.slice(1) : hash;
       if (!payload) {
@@ -89,6 +93,8 @@ const ShareQrPage = () => {
         setMolecule(decoded.molecule);
         setStyle({ ...decoded.style });
         setError(null);
+        // Unencrypted: mount viewer immediately
+        setViewerReady(true);
       } catch (e) {
         const msg = (e as Error)?.message || "";
         if (/password required/i.test(msg)) {
@@ -263,6 +269,15 @@ const ShareQrPage = () => {
       setStyle({ ...decoded.style });
       setError(null);
       setEncPayload(null);
+      // Blur input to help keyboard dismiss on iOS before mounting viewer
+      try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
+      // Delay Viewer mount slightly so viewport stabilizes after keyboard dismissal
+      setViewerReady(false);
+      if (mountDelayRef.current != null) window.clearTimeout(mountDelayRef.current);
+      mountDelayRef.current = window.setTimeout(() => {
+        setViewerReady(true);
+        mountDelayRef.current = null;
+      }, 260);
     } catch (err) {
       const m = (err as Error)?.message || "";
       if (/wrong password/i.test(m)) setPwErr("Wrong password or data corrupted"); else setPwErr("Failed to decrypt");
@@ -272,6 +287,9 @@ const ShareQrPage = () => {
       setPwBusy(false);
     }
   }, [applyDocTitleLater, encPayload, pw, supportsSubtle]);
+
+  // Cleanup any pending delayed mount on unmount
+  useEffect(() => () => { if (mountDelayRef.current != null) window.clearTimeout(mountDelayRef.current); }, []);
 
   return (
     <main className="relative min-h-screen w-screen overflow-hidden bg-white">
@@ -351,12 +369,14 @@ const ShareQrPage = () => {
           Decoding QR payload...
         </div>
       ) : (
-        <Viewer
-          molecule={molecule}
-          style={style}
-          onGroupReady={setViewerGroup}
-          className="h-[100svh] w-screen rounded-none border-0"
-        />
+        viewerReady ? (
+          <Viewer
+            molecule={molecule}
+            style={style}
+            onGroupReady={setViewerGroup}
+            className="h-[100svh] w-screen rounded-none border-0"
+          />
+        ) : null
       )}
 
   <div className="pointer-events-none fixed inset-0 z-[60]" style={{

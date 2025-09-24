@@ -125,7 +125,7 @@ export const Viewer = ({
 }: ViewerProps) => {
   const bgColor = molecule ? "#ffffff" : "#f3f6fb";
   const groupRef = useRef<THREE.Group | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  
   const controlsRef = useRef<any>(null);
   const [rotateMode, setRotateMode] = useState(false);
   const [resetTick, setResetTick] = useState(0);
@@ -173,45 +173,7 @@ export const Viewer = ({
     }
   }, [fitSmooth, resetTick]);
 
-  // Re-fit when the Viewer container resizes (UI changes, keyboard, etc.)
-  useEffect(() => {
-    if (!molecule) return;
-    const el = containerRef.current;
-    if (!el || typeof window === 'undefined' || !(window as any).ResizeObserver) return;
-    const ro = new (window as any).ResizeObserver(() => {
-      // throttle via rAF
-      requestAnimationFrame(() => {
-        setFitSmooth(true);
-        setResetTick((t) => t + 1);
-      });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [molecule]);
-
-  // Re-fit when the visual viewport changes (e.g., iOS keyboard show/hide)
-  useEffect(() => {
-    if (!molecule) return;
-    const vv = (typeof window !== 'undefined' ? (window as any).visualViewport : null) as VisualViewport | null;
-    if (!vv) return;
-
-    let rafId: number | null = null;
-    const onVVResize = () => {
-      if (rafId != null) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        setFitSmooth(true);
-        setResetTick((t) => t + 1);
-      });
-    };
-    vv.addEventListener('resize', onVVResize);
-    // Some browsers fire scroll with keyboard as well
-    vv.addEventListener('scroll', onVVResize);
-    return () => {
-      vv.removeEventListener('resize', onVVResize);
-      vv.removeEventListener('scroll', onVVResize);
-      if (rafId != null) cancelAnimationFrame(rafId);
-    };
-  }, [molecule]);
+  
 
   const onPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     if (!rotateMode || !groupRef.current) return;
@@ -282,7 +244,7 @@ export const Viewer = ({
   }, [rotateMode]);
 
   return (
-  <div ref={containerRef} className={`relative w-full overflow-hidden rounded-xl border border-slate-300 bg-white ${className ?? "h-[520px]"}`}>
+  <div className={`relative w-full overflow-hidden rounded-xl border border-slate-300 bg-white ${className ?? "h-[520px]"}`}>
       {molecule ? null : (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center">
           <div className="rounded-2xl border border-slate-200 bg-white/80 px-6 py-5 shadow-sm backdrop-blur">
