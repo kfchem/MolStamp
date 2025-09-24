@@ -1,19 +1,21 @@
 # MolStamp
 
-Client‑only web app to view, share, and open 3D molecular structures in AR.
+A client‑only web app that turns 3D molecular structures into scannable links and AR views in seconds — drop a file, get a link/QR, and you’re ready to share.
 
 ## What it does
 
 - Parse and visualize molecules from SDF/MOL or XYZ files entirely in the browser
-- Share a molecule via a single URL or QR code using a compact payload
+- Share a molecule with a single URL or QR code; compact payload keeps things quick to scan
 - Optional simple encryption for the shared payload (password required on open)
-- Export GLB/USDZ locally and open in AR (using a locally registered `@google/model-viewer`)
- - Export GLB/USDZ locally and open in AR
+- Export GLB/USDZ locally and open in AR
 - No molecular data is uploaded to a server; processing stays in your browser
 
  
 
 ## UI guide
+
+- Quick flow
+	- Drop a file → get a share link/QR → scan or open in AR
 
 - Viewer
 	- Drag & drop an SDF/MOL or XYZ file
@@ -26,7 +28,7 @@ Client‑only web app to view, share, and open 3D molecular structures in AR.
 	- On AR‑unsupported devices, a message is shown
 
 - QR Sharing panel
-	- Generates a compact share URL and QR code on the client only
+	- Generates a compact share URL and QR on the client only, designed for quick distribution
 	- Options include:
 		- Title (up to 63 chars)
 		- Dot shape (Square/Round/Diamond/Rounded square)
@@ -121,6 +123,7 @@ Apache-2.0. See `LICENSE` if present, or the `license` field in `package.json`.
 
 ## Acknowledgements
 
+ - This project was developed as part of a new educational program at Toyama Prefectural University.
 - three.js, @react-three/fiber, drei
 - @google/model-viewer
 - pako

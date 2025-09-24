@@ -392,6 +392,9 @@ export const encodeShareData = ({
 
 export const buildShareUrl = (encoded: string): string => {
   const base = SHARE_BASE_URL.replace(/\/$/, "");
+  // Always use clean "/qr#" in all environments per requirement.
+  // Note: On some static hosts (e.g., GitHub Pages with trailingSlash), navigating may redirect
+  // "/qr" -> "/qr/" but the generated link itself remains canonical as "/qr#...".
   return `${base}/qr#${encoded}`;
 };
 
