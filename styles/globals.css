@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Viewport unit fixups for mobile browsers (iOS Safari keyboard showing/hiding)
+   Prefer lvh/dvh when available to keep Canvas height stable */
+:root {
+  --vh: 1vh;
+  --lvh: 1lvh;
+  --dvh: 1dvh;
+}
+
+@supports (height: 100dvh) {
+  :root { --vh: 1dvh; }
+}
+@supports (height: 100lvh) {
+  :root { --lvh: 1lvh; }
+}
+
+/* Utility class to use logical viewport units if Tailwind arbitrary values are not enough */
+.h-50lvh { height: calc(50 * var(--lvh)); }
+
 :root {
   color-scheme: light;
 }

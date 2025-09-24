@@ -172,6 +172,30 @@ export const Viewer = ({
     }
   }, [fitSmooth, resetTick]);
 
+  // Re-fit when the visual viewport changes (e.g., iOS keyboard show/hide)
+  useEffect(() => {
+    if (!molecule) return;
+    const vv = (typeof window !== 'undefined' ? (window as any).visualViewport : null) as VisualViewport | null;
+    if (!vv) return;
+
+    let rafId: number | null = null;
+    const onVVResize = () => {
+      if (rafId != null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setFitSmooth(true);
+        setResetTick((t) => t + 1);
+      });
+    };
+    vv.addEventListener('resize', onVVResize);
+    // Some browsers fire scroll with keyboard as well
+    vv.addEventListener('scroll', onVVResize);
+    return () => {
+      vv.removeEventListener('resize', onVVResize);
+      vv.removeEventListener('scroll', onVVResize);
+      if (rafId != null) cancelAnimationFrame(rafId);
+    };
+  }, [molecule]);
+
   const onPointerDown = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     if (!rotateMode || !groupRef.current) return;
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);

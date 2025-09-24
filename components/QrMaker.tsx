@@ -748,7 +748,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                         placeholder={"Password"}
                         value={password ?? ""}
                         onChange={(e) => onChangePassword?.(e.target.value)}
-                        disabled={!shareUrl}
+                        disabled={!shareUrl || Boolean(encrypt)}
                         aria-invalid={encShake || undefined}
                       />
                       <motion.button

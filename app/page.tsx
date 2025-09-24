@@ -271,7 +271,7 @@ const HomePage = () => {
               onGroupReady={setViewerGroup}
               showRotateControl
               onOrientationChange={(q)=> setOrientationQ(q)}
-              className="h-[50vh] min-h-[340px]"
+              className="h-[50lvh] min-h-[340px]"
             />
           </UploadDropzone>
           <OptionsPanel value={style} onChange={setStyle} disabled={!molecule} />
