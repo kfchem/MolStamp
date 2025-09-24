@@ -59,13 +59,14 @@ const useFitCamera = (
       radius = Math.max(radius, dist + 0.5);
     });
   const minR = 0.2;
-    const maxR = Math.max(50, radius * 1.8);
-    const desiredR = Math.max(radius * 3, 4.5);
+    // Allow much farther zoom-out for very large molecules and give more headroom on initial fit
+    const maxR = Math.max(200, radius * 8);
+    const desiredR = Math.max(radius * 3.8, 6);
     const r = Math.min(Math.max(desiredR, minR), maxR);
     const d = r / Math.sqrt(3);
     const pos = new THREE.Vector3(center.x + d, center.y + d, center.z + d);
   camera.near = 0.01;
-    camera.far = Math.max(5000, radius * 12);
+    camera.far = Math.max(20000, radius * 24);
     camera.updateProjectionMatrix();
     setZoomBounds?.(minR, maxR);
     const anyControls = controls as any;
@@ -133,8 +134,8 @@ export const Viewer = ({
   const orientationQ = useRef<THREE.Quaternion>(new THREE.Quaternion());
   const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
   const lastPinchDist = useRef<number | null>(null);
-  const [minDistance, setMinDistance] = useState(0.35);
-  const [maxDistance, setMaxDistance] = useState(5000);
+  const [minDistance, setMinDistance] = useState(0.25);
+  const [maxDistance, setMaxDistance] = useState(20000);
   const [fitSmooth, setFitSmooth] = useState(false);
   const [spinCount, setSpinCount] = useState(0);
 
@@ -314,7 +315,7 @@ export const Viewer = ({
           smoothTime={0.18}
           draggingSmoothTime={0.12}
           dollyToCursor
-          dollySpeed={0.8}
+          dollySpeed={1.0}
           azimuthRotateSpeed={0.9}
           polarRotateSpeed={0.9}
           truckSpeed={1.0}

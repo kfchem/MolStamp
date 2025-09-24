@@ -305,7 +305,7 @@ const ShareQrPage = () => {
                 >
                   <input
                     type="password"
-                    className={`h-9 w-full rounded-md bg-white/95 pl-2 pr-10 text-sm text-slate-800 placeholder:text-slate-400 shadow-inner ring-1 focus:outline-none ${pwErr || pwShake ? "ring-rose-300" : "ring-slate-200 focus:ring-sky-300"}`}
+                    className={`h-9 w-full rounded-md bg-white/95 pl-2 pr-10 text-base text-slate-800 placeholder:text-slate-400 shadow-inner ring-1 focus:outline-none ${pwErr || pwShake ? "ring-rose-300" : "ring-slate-200 focus:ring-sky-300"}`}
                     placeholder="Password"
                     value={pw}
                     onChange={(e)=>{ setPw(e.target.value); setPwErr(null); }}

@@ -31,7 +31,7 @@ export const exportUsdz = async (object: Object3D): Promise<Blob> => {
   });
 
   // Use the correct MIME type and provide a filename via File to help iOS Quick Look
-  const file = new File([arrayBuffer], "m2go.usdz", {
+  const file = new File([arrayBuffer], "molstamp.usdz", {
     type: "model/vnd.usdz+zip",
   });
   return file;

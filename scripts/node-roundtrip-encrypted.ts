@@ -10,7 +10,7 @@ import { decodeShareSegmentEncrypted } from "../lib/share/decode";
     bonds: [ { i: 0, j: 1, order: 2 } ],
   };
   const style = { material: 'standard', atomScale: 0.6, bondRadius: 0.12, quality: 'high' } as const;
-  const password = process.env.M2GO_SMOKE_PW || 'testpw';
+  const password = process.env.MOLSTAMP_SMOKE_PW || 'testpw';
   const res = await encodeShareDataEncrypted({ molecule: mol as any, style: style as any, precisionDrop: 0, password });
   const seg = res.encoded;
   const dec = await decodeShareSegmentEncrypted(seg, password);
