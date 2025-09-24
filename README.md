@@ -1,4 +1,4 @@
-# Molecules ToGo
+# MolStamp
 
 Client‑only web app to view, share, and open 3D molecular structures in AR.
 

@@ -3,11 +3,24 @@ import { ReactNode } from "react";
 import { APP_NAME, TAGLINE } from "@/lib/branding";
 import "@/styles/globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SHARE_BASE_URL;
+
 export const metadata: Metadata = {
-  title: APP_NAME,
+  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
+  applicationName: APP_NAME,
   description: TAGLINE,
-  icons: {
-    icon: "/favicon.svg",
+  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  icons: { icon: "/favicon.svg" },
+  openGraph: {
+    title: APP_NAME,
+    description: TAGLINE,
+    siteName: APP_NAME,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: APP_NAME,
+    description: TAGLINE,
   },
 };
 

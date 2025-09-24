@@ -698,7 +698,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                       }}
                       options={[
                         { value: "none", label: "None" },
-                        { value: "brand", label: "Molecules ToGo" },
+                        { value: "brand", label: "MolStamp" },
                         { value: "upload", label: "Upload" },
                       ]}
                       disabled={!shareUrl}

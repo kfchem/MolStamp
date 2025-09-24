@@ -8,7 +8,7 @@ import { Viewer } from "@/components/Viewer";
 import { OptionsPanel } from "@/components/OptionsPanel";
 import { ArPanel } from "@/components/ArPanel";
 import { QrMaker } from "@/components/QrMaker";
-import { APP_NAME, TAGLINE, PLUS_NAME, PLUS_URL } from "@/lib/branding";
+import { APP_NAME, TAGLINE, PLUS_NAME, PLUS_URL, REPO_URL } from "@/lib/branding";
 import { parseSdf } from "@/lib/parse/parseSdf";
 import { parseXyz } from "@/lib/parse/parseXyz";
 import { encodeShareData, encodeShareDataEncrypted, buildShareUrl } from "@/lib/share/encode";
@@ -241,7 +241,7 @@ const HomePage = () => {
               Reset
             </button>
               <a
-                href="https://github.com/kfchem/m2go"
+                href={REPO_URL}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Open GitHub repository"

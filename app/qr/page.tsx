@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Group } from "three";
 import { Viewer } from "@/components/Viewer";
 import { OptionsPanel } from "@/components/OptionsPanel";
-import { APP_NAME, TAGLINE } from "@/lib/branding";
+import { APP_NAME, TAGLINE, REPO_URL } from "@/lib/branding";
 import { decodeShareSegment, decodeShareSegmentEncrypted } from "@/lib/share/decode";
 import type { Molecule, StyleSettings } from "@/lib/chem/types";
 import type { DetailedHTMLProps, HTMLAttributes, ReactElement } from "react";
@@ -412,12 +412,12 @@ const ShareQrPage = () => {
            <div className="pointer-events-auto inline-flex items-center gap-1 rounded-md bg-white/50 px-1.5 py-0.5 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm">
              <span className="opacity-80">Powered by</span>
              <a
-               href="https://github.com/kfchem/m2go"
+               href={REPO_URL}
                target="_blank"
                rel="noreferrer"
                className="font-medium text-slate-500 underline-offset-2 hover:text-sky-600 hover:underline"
              >
-               Molecules ToGo
+               MolStamp
              </a>
            </div>
          </div>
