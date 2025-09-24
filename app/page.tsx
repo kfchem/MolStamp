@@ -82,6 +82,24 @@ const HomePage = () => {
   const [password, setPassword] = useState<string>("");
   const [orientationQ, setOrientationQ] = useState<THREE.Quaternion | null>(null);
   const [precisionDrop, setPrecisionDrop] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(0);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  // Heuristic: consider keyboard open if visualViewport height is significantly smaller than layout viewport
+  useEffect(() => {
+    const vv = (typeof window !== 'undefined' ? (window as any).visualViewport : null) as VisualViewport | null;
+    if (!vv) return;
+    const onVVChange = () => {
+      const ratio = vv.height / window.innerHeight;
+      setKeyboardOpen(ratio < 0.85); // threshold tweakable
+    };
+    vv.addEventListener('resize', onVVChange);
+    vv.addEventListener('scroll', onVVChange);
+    onVVChange();
+    return () => {
+      vv.removeEventListener('resize', onVVChange);
+      vv.removeEventListener('scroll', onVVChange);
+    };
+  }, []);
 
   const onFileLoaded = useCallback((payload: UploadPayload) => {
     setError(null);
@@ -271,7 +289,7 @@ const HomePage = () => {
               onGroupReady={setViewerGroup}
               showRotateControl
               onOrientationChange={(q)=> setOrientationQ(q)}
-              className="h-[50lvh] min-h-[340px]"
+              className={keyboardOpen ? "h-[50dvh] min-h-[340px]" : "h-[50lvh] min-h-[340px]"}
             />
           </UploadDropzone>
           <OptionsPanel value={style} onChange={setStyle} disabled={!molecule} />
