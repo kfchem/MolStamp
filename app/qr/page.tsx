@@ -277,7 +277,7 @@ const ShareQrPage = () => {
       mountDelayRef.current = window.setTimeout(() => {
         setViewerReady(true);
         mountDelayRef.current = null;
-      }, 260);
+      }, 3000);
     } catch (err) {
       const m = (err as Error)?.message || "";
       if (/wrong password/i.test(m)) setPwErr("Wrong password or data corrupted"); else setPwErr("Failed to decrypt");
