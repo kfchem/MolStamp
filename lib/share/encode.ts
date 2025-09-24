@@ -379,10 +379,10 @@ export const encodeShareData = ({
     useDelta,
     title,
   );
-  // MTG envelope v1: ['M','T','G', (ver<<4)|(flags4)] where bit0=enc
+  // MS envelope v1: ['M','S', (ver<<4)|(flags4)] where bit0=enc
   const ver = 1;
   const flags4 = 0; // unencrypted
-  const header = new Uint8Array(["M".charCodeAt(0), "T".charCodeAt(0), "G".charCodeAt(0), ((ver & 0x0f) << 4) | (flags4 & 0x0f)]);
+  const header = new Uint8Array(["M".charCodeAt(0), "S".charCodeAt(0), ((ver & 0x0f) << 4) | (flags4 & 0x0f)]);
   const out = new Uint8Array(header.byteLength + innerCompressed.byteLength);
   out.set(header, 0);
   out.set(innerCompressed, header.byteLength);
@@ -418,10 +418,10 @@ export const encodeShareDataEncrypted = async ({
   const iterations = 100000;
   const key = await importKeyFromPasswordPBKDF2(password, salt, iterations);
   const ct = await aesGcmEncrypt(key, iv, innerCompressed);
-  // Compact envelope v1 (encrypted): ['M','T','G', (ver<<4)|(flags4=1)], then salt(16)|iv(12)|ct
+  // Compact envelope v1 (encrypted): ['M','S', (ver<<4)|(flags4=1)], then salt(16)|iv(12)|ct
   const ver = 1;
   const flags4 = 0x1; // encrypted
-  const header = new Uint8Array(["M".charCodeAt(0), "T".charCodeAt(0), "G".charCodeAt(0), ((ver & 0x0f) << 4) | (flags4 & 0x0f)]);
+  const header = new Uint8Array(["M".charCodeAt(0), "S".charCodeAt(0), ((ver & 0x0f) << 4) | (flags4 & 0x0f)]);
   const out = new Uint8Array(header.byteLength + salt.byteLength + iv.byteLength + ct.byteLength);
   out.set(header, 0);
   out.set(salt, header.byteLength + 0);

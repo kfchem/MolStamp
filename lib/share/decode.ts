@@ -44,17 +44,17 @@ export const decodeShareSegment = (segment: string): DecodedShare => {
   let bytes: Uint8Array;
   try { bytes = fromBase80(segment); } catch { throw new Error("Invalid Base80 segment"); }
 
-  // Check compact MTG envelope v1: ['M','T','G', (ver<<4)|(flags)]
-  if (bytes.byteLength >= 4) {
-    const magic3 = String.fromCharCode(bytes[0], bytes[1], bytes[2]);
-    const vflags = bytes[3];
+  // Check compact MS envelope v1: ['M','S', (ver<<4)|(flags)]
+  if (bytes.byteLength >= 3) {
+    const magic2 = String.fromCharCode(bytes[0], bytes[1]);
+    const vflags = bytes[2];
     const ver = (vflags >>> 4) & 0x0f;
     const flags = vflags & 0x0f;
-    if (magic3 === "MTG" && ver === 1) {
+    if (magic2 === "MS" && ver === 1) {
       const enc = (flags & 0x01) !== 0;
       if (!enc) {
-        // Unencrypted: inflate body after header (4 bytes)
-        const raw = inflate(bytes.subarray(4));
+        // Unencrypted: inflate body after header (3 bytes)
+        const raw = inflate(bytes.subarray(3));
         const u8 = new Uint8Array(raw);
         const r = new BitReader(u8);
         const atomCount = r.readUnsigned(10);
@@ -134,11 +134,11 @@ export const decodeShareSegment = (segment: string): DecodedShare => {
         const payload: SharePayload = { v: 2, atoms, bonds, style, meta: title ? { title } : undefined };
         return { payload, molecule: toMolecule(payload), style };
       } else {
-        throw new Error("Encrypted MTG segment: password required");
+        throw new Error("Encrypted MS segment: password required");
       }
     }
   }
-  throw new Error("Unsupported segment: MTG v1 only");
+  throw new Error("Unsupported segment: MS v1 only");
 };
 
 export const decodeShareSegmentEncrypted = async (
@@ -147,20 +147,20 @@ export const decodeShareSegmentEncrypted = async (
 ): Promise<DecodedShare> => {
   let bytes: Uint8Array;
   try { bytes = fromBase80(segment); } catch { throw new Error("Invalid Base80 segment"); }
-  if (bytes.byteLength < 4) throw new Error("Invalid segment");
-  const magic3 = String.fromCharCode(bytes[0], bytes[1], bytes[2]);
-  const vflags = bytes[3];
+  if (bytes.byteLength < 3) throw new Error("Invalid segment");
+  const magic2 = String.fromCharCode(bytes[0], bytes[1]);
+  const vflags = bytes[2];
   const ver = (vflags >>> 4) & 0x0f;
   const flags = vflags & 0x0f;
-  if (magic3 !== "MTG" || ver !== 1 || (flags & 0x01) === 0) {
-    throw new Error("Not an encrypted MT v1 segment");
+  if (magic2 !== "MS" || ver !== 1 || (flags & 0x01) === 0) {
+    throw new Error("Not an encrypted MS v1 segment");
   }
-  if (bytes.byteLength < 4 + 16 + 12 + 16) {
+  if (bytes.byteLength < 3 + 16 + 12 + 16) {
     throw new Error("Encrypted segment too short");
   }
-  const salt = bytes.subarray(4, 4 + 16);
-  const iv = bytes.subarray(4 + 16, 4 + 16 + 12);
-  const ct = bytes.subarray(4 + 16 + 12);
+  const salt = bytes.subarray(3, 3 + 16);
+  const iv = bytes.subarray(3 + 16, 3 + 16 + 12);
+  const ct = bytes.subarray(3 + 16 + 12);
   const iterations = 100000;
   const key = await importKeyFromPasswordPBKDF2(password, salt, iterations);
   let plain: Uint8Array;
