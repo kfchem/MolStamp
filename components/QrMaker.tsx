@@ -597,7 +597,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              QR will appear after upload.
+              QR appears after the file loads.
             </motion.p>
           )}
         </AnimatePresence>

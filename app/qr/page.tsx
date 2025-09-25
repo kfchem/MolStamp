@@ -117,6 +117,8 @@ const ShareQrPage = () => {
   const [arExporting, setArExporting] = useState(false);
   const [mvReady, setMvReady] = useState(false);
   const mvRef = useRef<HTMLElement | null>(null);
+  const [arSupported, setArSupported] = useState<boolean | null>(null);
+  const [arPulse, setArPulse] = useState(false);
 
   useEffect(
     () => () => {
@@ -205,6 +207,43 @@ const ShareQrPage = () => {
       setArExporting(false);
     }
   }, [rebuildArtifacts, viewerGroup, mvReady]);
+
+  // Detect AR support with a slight delay (so main content settles) and animate button in if supported
+  useEffect(() => {
+    if (!molecule) { setArSupported(null); return; }
+    let cancelled = false;
+    const detect = async () => {
+      const delay = 800; // ms delay before detection & reveal
+      await new Promise(r => setTimeout(r, delay));
+      if (cancelled) return;
+      const isiOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroidChrome = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent) && /Chrome/.test(navigator.userAgent);
+      let webxr = false;
+      try {
+        const xr: any = (navigator as any).xr;
+        if (xr?.isSessionSupported) {
+          webxr = await xr.isSessionSupported('immersive-ar').catch(() => false);
+        }
+      } catch {}
+      const supported = isiOS || isAndroidChrome || webxr;
+      if (!cancelled) {
+        setArSupported(supported);
+        if (supported) {
+          // Trigger a finite pulse sequence (handled by separate effect)
+          setArPulse(true);
+        }
+      }
+    };
+    detect();
+    return () => { cancelled = true; };
+  }, [molecule]);
+
+  // Automatically stop the pulse after its finite animation cycles (~2.3s total)
+  useEffect(() => {
+    if (!arPulse) return;
+    const id = setTimeout(() => setArPulse(false), 2300);
+    return () => clearTimeout(id);
+  }, [arPulse]);
 
   useEffect(() => {
     (async () => {
@@ -396,22 +435,53 @@ const ShareQrPage = () => {
           </button>
         </div>
  
-         <div className="pointer-events-auto fixed left-1/2 -translate-x-1/2" style={{ bottom: "calc(env(safe-area-inset-bottom) + 2.25rem)" }}>
-           <button
-             type="button"
-             aria-label={arExporting ? "Preparing AR assets" : "Open AR"}
-             aria-busy={arExporting}
-             onClick={openAR}
-             disabled={!molecule || arExporting}
-             className="h-12 w-12 rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
-           >
-             {arExporting ? (
-               <ArrowPathIcon className="mx-auto h-5 w-5 animate-spin" />
-             ) : (
-               <CubeIcon className="mx-auto h-5 w-5" />
-             )}
-           </button>
-         </div>
+         <AnimatePresence>
+           {arSupported && molecule ? (
+             <motion.div
+               key="ar-btn-wrapper"
+               className="pointer-events-none absolute inset-x-0 flex justify-center"
+               style={{ bottom: "2.25rem" }}
+               initial={{ opacity: 0, scale: 0.6, y: 18 }}
+               animate={{ opacity: 1, scale: 1, y: 0 }}
+               exit={{ opacity: 0, scale: 0.6, y: 12 }}
+               transition={{ type: "spring", stiffness: 340, damping: 36, mass: 0.6 }}
+             >
+               <motion.button
+                 type="button"
+                 aria-label={arExporting ? "Preparing AR assets" : "Open AR"}
+                 aria-busy={arExporting}
+                 onClick={openAR}
+                 disabled={!molecule || arExporting}
+                 className="pointer-events-auto relative h-12 w-12 rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                 whileTap={{ scale: 0.9 }}
+               >
+                 {arPulse ? (
+                   <>
+                     {/* Soft glow pulse (two gentle expansions) */}
+                     <motion.span
+                       className="pointer-events-none absolute inset-0 rounded-full bg-sky-400/25"
+                       initial={{ scale: 0.9, opacity: 0.35 }}
+                       animate={{ scale: [0.9, 1.25], opacity: [0.35, 0] }}
+                       transition={{ duration: 1.1, ease: "easeOut", repeat: 1, repeatDelay: 0.3 }}
+                     />
+                     {/* Outline ripple (slight) */}
+                     <motion.span
+                       className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-sky-300/60"
+                       initial={{ scale: 1, opacity: 0.75 }}
+                       animate={{ scale: [1, 1.12], opacity: [0.75, 0] }}
+                       transition={{ duration: 1.1, ease: "easeOut", repeat: 1, repeatDelay: 0.3, delay: 0.15 }}
+                     />
+                   </>
+                 ) : null}
+                 {arExporting ? (
+                   <ArrowPathIcon className="mx-auto h-5 w-5 animate-spin" />
+                 ) : (
+                   <CubeIcon className="mx-auto h-5 w-5" />
+                 )}
+               </motion.button>
+             </motion.div>
+           ) : null}
+         </AnimatePresence>
  
          <div className="pointer-events-none fixed select-none text-[10px] text-slate-400" style={{ right: "max(0.5rem, env(safe-area-inset-right))", bottom: "max(0.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))" }}>
            <div className="pointer-events-auto inline-flex items-center gap-1 rounded-md bg-white/50 px-1.5 py-0.5 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm">
