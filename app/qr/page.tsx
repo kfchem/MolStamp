@@ -168,16 +168,18 @@ const ShareQrPage = () => {
 
   const openAR = useCallback(async () => {
     if (!viewerGroup) return;
-    const isiOS =
-      typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isiOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
     try {
       setArStatus(null);
       setArExporting(true);
       if (!isiOS && !mvReady) setMvReady(true);
+
+      // Build / rebuild artifacts (GLB + USDZ)
       const built = await rebuildArtifacts();
       if (!built) throw new Error("Failed to build AR artifacts");
 
       if (isiOS) {
+        // iOS Quick Look: anchor trick works with blob object URL (has extension via usdz export)
         const url = built.usdz.url;
         const a = document.createElement("a");
         a.setAttribute("rel", "ar");
@@ -188,25 +190,64 @@ const ShareQrPage = () => {
         return;
       }
 
-  const mv = mvRef.current as unknown as { canActivateAR?: boolean; activateAR?: () => void; setAttribute: (name: string, value: string) => void } | null;
-      if (!mv) throw new Error("AR viewer not ready");
+      // Ensure <model-viewer> custom element is defined & ref attached
+      try { await (customElements as any).whenDefined?.('model-viewer'); } catch {}
 
-      mv.setAttribute("src", built.glb.url);
-      mv.setAttribute("ios-src", built.usdz.url);
+      const waitForMv = async () => {
+        for (let i = 0; i < 15; i++) { // up to ~1.2s
+          const mvEl = mvRef.current as any;
+          if (mvEl) return mvEl;
+          await new Promise(r => setTimeout(r, 80));
+        }
+        throw new Error("AR viewer not ready");
+      };
+      const mv: any = await waitForMv();
 
-      if (typeof mv.canActivateAR !== "undefined" && mv.canActivateAR === false) {
-        setArStatus("AR is not supported on this device.");
-        return;
+      // Assign sources (GLB for WebXR / Scene Viewer, USDZ retained for potential cross-platform reuse)
+      try {
+        mv.setAttribute("src", built.glb.url);
+        mv.setAttribute("ios-src", built.usdz.url);
+      } catch {}
+
+      // Some Android devices report canActivateAR=false momentarily until model & capabilities settle.
+      // We'll retry a few times before giving up, and attempt activateAR regardless as last resort.
+      let can = mv.canActivateAR;
+      if (can === false) {
+        for (let i = 0; i < 8; i++) { // ~1.2s extra
+          await new Promise(r => setTimeout(r, 150));
+          can = mv.canActivateAR;
+          if (can) break;
+        }
       }
 
-      mv.activateAR?.();
+      // Attempt activation even if still false (some builds don't update the flag properly but still support AR)
+      try {
+        mv.activateAR?.();
+        // If canActivateAR was definitively false after retries, provide a softer pending note instead of immediate failure.
+        if (can === false) {
+          setTimeout(() => {
+            // If after a grace period no AR session started (heuristic: button still enabled & no status), inform user.
+            if (!mv.__arSessionStarted && !arExporting) {
+              setArStatus("AR launch may not be supported for local models on this Android device.");
+            }
+          }, 1600);
+        }
+      } catch (err) {
+        // Differentiate potential root causes for Android Scene Viewer vs WebXR
+        const msg = (err as Error)?.message || "";
+        if (/blob|object url/i.test(msg)) {
+          setArStatus("Android AR requires a publicly hosted model file (blob URL not accepted)." );
+        } else {
+          setArStatus(msg || "Failed to open AR");
+        }
+      }
     } catch (e) {
       console.error(e);
       setArStatus((e as Error).message || "Failed to open AR");
     } finally {
       setArExporting(false);
     }
-  }, [rebuildArtifacts, viewerGroup, mvReady]);
+  }, [rebuildArtifacts, viewerGroup, mvReady, arExporting]);
 
   // Detect AR support with a slight delay (so main content settles) and animate button in if supported
   useEffect(() => {
