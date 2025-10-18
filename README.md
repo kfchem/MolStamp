@@ -123,7 +123,6 @@ Apache-2.0. See `LICENSE` if present, or the `license` field in `package.json`.
 
 ## Acknowledgements
 
- - This project was developed as part of a new educational program at Toyama Prefectural University.
 - three.js, @react-three/fiber, drei
 - @google/model-viewer
 - pako
