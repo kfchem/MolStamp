@@ -27,7 +27,7 @@ A client‑only web app that turns 3D molecular structures into scannable links 
 	- Open AR: iOS uses Quick Look (USDZ); other platforms use WebXR via model‑viewer
 	- On AR‑unsupported devices, a message is shown
 
-- QR Sharing panel
+- Sharing panel
 	- Generates a compact share URL and QR on the client only, designed for quick distribution
 	- Options include:
 		- Title (up to 63 chars)
@@ -127,6 +127,8 @@ Apache-2.0. See `LICENSE` if present, or the `license` field in `package.json`.
 - @google/model-viewer
 - pako
 - qrcode
+
+“QR Code” is a registered trademark of DENSO WAVE INCORPORATED in Japan and other countries.
 
 ## Disclaimer
 

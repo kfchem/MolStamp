@@ -530,7 +530,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
   return (
     <motion.div layout className="space-y-3 rounded-xl border border-slate-300 bg-white p-4 shadow-sm max-w-full">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">QR Sharing</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Sharing</h2>
         <div className="relative">
           <button
             type="button"
