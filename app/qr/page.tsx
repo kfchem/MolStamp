@@ -168,27 +168,19 @@ const ShareQrPage = () => {
 
   const openAR = useCallback(async () => {
     if (!viewerGroup) return;
-    const isiOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isiOS = typeof navigator !== "undefined" && (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (((navigator as any).platform === 'MacIntel' || /Mac/.test(String((navigator as any).platform))) && (navigator as any).maxTouchPoints > 1)
+    );
     try {
       setArStatus(null);
       setArExporting(true);
-      if (!isiOS && !mvReady) setMvReady(true);
+      // Ensure model-viewer element exists for both iOS and others
+      if (!mvReady) setMvReady(true);
 
       // Build / rebuild artifacts (GLB + USDZ)
       const built = await rebuildArtifacts();
       if (!built) throw new Error("Failed to build AR artifacts");
-
-      if (isiOS) {
-        // iOS Quick Look: anchor trick works with blob object URL (has extension via usdz export)
-        const url = built.usdz.url;
-        const a = document.createElement("a");
-        a.setAttribute("rel", "ar");
-        a.href = url;
-        document.body.append(a);
-        a.click();
-        setTimeout(() => a.remove(), 0);
-        return;
-      }
 
       // Ensure <model-viewer> custom element is defined & ref attached
       try { await (customElements as any).whenDefined?.('model-viewer'); } catch {}
@@ -209,7 +201,7 @@ const ShareQrPage = () => {
         mv.setAttribute("ios-src", built.usdz.url);
       } catch {}
 
-      // Some Android devices report canActivateAR=false momentarily until model & capabilities settle.
+      // Some devices report canActivateAR=false momentarily until model & capabilities settle.
       // We'll retry a few times before giving up, and attempt activateAR regardless as last resort.
       let can = mv.canActivateAR;
       if (can === false) {
@@ -228,7 +220,9 @@ const ShareQrPage = () => {
           setTimeout(() => {
             // If after a grace period no AR session started (heuristic: button still enabled & no status), inform user.
             if (!mv.__arSessionStarted && !arExporting) {
-              setArStatus("AR launch may not be supported for local models on this Android device.");
+              setArStatus(isiOS
+                ? "AR Quick Look may require an extra tap to enter AR on this device."
+                : "AR launch may not be supported for local models on this Android device.");
             }
           }, 1600);
         }
@@ -236,7 +230,9 @@ const ShareQrPage = () => {
         // Differentiate potential root causes for Android Scene Viewer vs WebXR
         const msg = (err as Error)?.message || "";
         if (/blob|object url/i.test(msg)) {
-          setArStatus("Android AR requires a publicly hosted model file (blob URL not accepted)." );
+          setArStatus(isiOS
+            ? "iOS AR Quick Look could not open the model URL."
+            : "Android AR may require a publicly hosted model file (blob URL not accepted)." );
         } else {
           setArStatus(msg || "Failed to open AR");
         }
@@ -257,7 +253,10 @@ const ShareQrPage = () => {
       const delay = 800; // ms delay before detection & reveal
       await new Promise(r => setTimeout(r, delay));
       if (cancelled) return;
-      const isiOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isiOS = typeof navigator !== 'undefined' && (
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (((navigator as any).platform === 'MacIntel' || /Mac/.test(String((navigator as any).platform))) && (navigator as any).maxTouchPoints > 1)
+      );
       const isAndroidChrome = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent) && /Chrome/.test(navigator.userAgent);
       let webxr = false;
       try {
