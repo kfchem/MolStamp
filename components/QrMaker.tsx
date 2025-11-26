@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatedSelect } from "./AnimatedSelect";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline";
@@ -62,6 +63,7 @@ export const QrMaker = ({
   const [copiedId, setCopiedId] = useState<number>(0);
   const copiedTimerRef = useRef<number | null>(null);
   const [encShake, setEncShake] = useState<boolean>(false);
+  const [showModal, setShowModal] = useState<boolean>(false);
   const sanitizeTitleLocal = useCallback((s: string) => {
     const allowed = new Set<string>([
       " ",
@@ -591,12 +593,13 @@ export const QrMaker = ({
 
   const [open, setOpen] = useState<boolean>(false);
   return (
-    <motion.div
-      layout
-      className="space-y-3 rounded-xl border border-slate-300 bg-white p-4 shadow-sm max-w-full"
-    >
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">Sharing</h2>
+    <>
+      <motion.div
+        layout
+        className="space-y-3 rounded-xl border border-slate-300 bg-white p-4 shadow-sm max-w-full"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Sharing</h2>
         <div className="relative">
           <button
             type="button"
@@ -629,7 +632,21 @@ export const QrMaker = ({
       </div>
       <motion.div
         layout
-        className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-3 overflow-hidden max-w-full"
+        className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-3 overflow-hidden max-w-full cursor-pointer hover:border-sky-300 transition-colors"
+        onClick={() => {
+          if (canRender && (svgPreview || pngUrl)) {
+            setShowModal(true);
+          }
+        }}
+        role="button"
+        tabIndex={canRender && (svgPreview || pngUrl) ? 0 : -1}
+        onKeyDown={(e) => {
+          if ((e.key === "Enter" || e.key === " ") && canRender && (svgPreview || pngUrl)) {
+            e.preventDefault();
+            setShowModal(true);
+          }
+        }}
+        aria-label="Click to enlarge QR code"
       >
         <AnimatePresence initial={false} mode="wait">
           {canRender && (svgPreview || pngUrl) ? (
@@ -1078,6 +1095,62 @@ export const QrMaker = ({
         </div>
       </motion.div>
     </motion.div>
+
+    {/* Modal for enlarged QR code */}
+    {typeof window !== "undefined" && createPortal(
+      <AnimatePresence>
+        {showModal && canRender && (svgPreview || pngUrl) ? (
+          <motion.div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowModal(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setShowModal(false);
+              }
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Enlarged QR code"
+            tabIndex={-1}
+          >
+            <motion.div
+              className="relative max-w-2xl w-full bg-white rounded-xl shadow-2xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-center w-full">
+                {svgPreview ? (
+                  <div
+                    className="w-full max-w-full [&>svg]:w-full [&>svg]:h-auto [&>svg]:max-h-[70vh]"
+                    dangerouslySetInnerHTML={{ __html: svgPreview }}
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={pngUrl!}
+                    alt="2D barcode enlarged"
+                    className="w-full h-auto max-h-[70vh] object-contain"
+                  />
+                )}
+              </div>
+              <div className="mt-4 text-center text-sm text-slate-500">
+                Click outside to close
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>,
+      document.body
+    )}
+    </>
   );
 };
 
