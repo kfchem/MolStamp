@@ -5,10 +5,20 @@ import type { Group } from "three";
 import { Viewer } from "@/components/Viewer";
 import { OptionsPanel } from "@/components/OptionsPanel";
 import { APP_NAME, TAGLINE, REPO_URL } from "@/lib/branding";
-import { decodeShareSegment, decodeShareSegmentEncrypted } from "@/lib/share/decode";
+import {
+  decodeShareSegment,
+  decodeShareSegmentEncrypted,
+} from "@/lib/share/decode";
 import type { Molecule, StyleSettings } from "@/lib/chem/types";
 import type { DetailedHTMLProps, HTMLAttributes, ReactElement } from "react";
-import { CubeIcon, AdjustmentsHorizontalIcon, XMarkIcon, ArrowPathIcon, LockClosedIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import {
+  CubeIcon,
+  AdjustmentsHorizontalIcon,
+  XMarkIcon,
+  ArrowPathIcon,
+  LockClosedIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
 import { AnimatePresence, motion } from "framer-motion";
 
 const DEFAULT_STYLE: StyleSettings = {
@@ -18,13 +28,16 @@ const DEFAULT_STYLE: StyleSettings = {
   quality: "medium",
 };
 
-type ModelViewerProps = DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
+type ModelViewerProps = DetailedHTMLProps<
+  HTMLAttributes<HTMLElement>,
+  HTMLElement
+> & {
   src?: string;
-  'ios-src'?: string;
-  ar?: boolean | 'true' | 'false';
-  'ar-modes'?: string;
-  'camera-controls'?: boolean | 'true' | 'false';
-  autoplay?: boolean | 'true' | 'false';
+  "ios-src"?: string;
+  ar?: boolean | "true" | "false";
+  "ar-modes"?: string;
+  "camera-controls"?: boolean | "true" | "false";
+  autoplay?: boolean | "true" | "false";
 };
 const ModelViewer = "model-viewer" as unknown as (
   props: ModelViewerProps
@@ -44,32 +57,33 @@ const ShareQrPage = () => {
   const [pwBusy, setPwBusy] = useState<boolean>(false);
   const [pwErr, setPwErr] = useState<string | null>(null);
   const [pwShake, setPwShake] = useState<boolean>(false);
-  const supportsSubtle = typeof globalThis !== 'undefined' && (globalThis as any).crypto && (globalThis as any).crypto.subtle;
-
-  const subtitle = useMemo(() => {
-    if (loading) return "Decoding shared payload...";
-    if (error) return TAGLINE;
-    if (!molecule) return TAGLINE;
-    const parts: string[] = [];
-    if (molecule.title) parts.push(molecule.title);
-    parts.push(`${molecule.atoms.length} atoms`);
-    return parts.join(" | ");
-  }, [error, loading, molecule]);
+  const supportsSubtle =
+    typeof globalThis !== "undefined" &&
+    (globalThis as any).crypto &&
+    (globalThis as any).crypto.subtle;
 
   const applyDocTitle = useCallback((t?: string | null) => {
     if (typeof document === "undefined") return;
     const titleText = t && t.trim().length > 0 ? `${t}` : `${APP_NAME}`;
     document.title = titleText;
   }, []);
-  const applyDocTitleLater = useCallback((t?: string | null, delay = 220) => {
-    if (typeof window === "undefined") return;
-    const id = window.setTimeout(() => applyDocTitle(t ?? null), Math.max(0, delay));
-    return () => window.clearTimeout(id);
-  }, [applyDocTitle]);
+  const applyDocTitleLater = useCallback(
+    (t?: string | null, delay = 220) => {
+      if (typeof window === "undefined") return;
+      const id = window.setTimeout(
+        () => applyDocTitle(t ?? null),
+        Math.max(0, delay)
+      );
+      return () => window.clearTimeout(id);
+    },
+    [applyDocTitle]
+  );
 
   useEffect(() => {
     const cancel = applyDocTitleLater(molecule?.title ?? null, 220);
-    return () => { if (typeof cancel === 'function') cancel(); };
+    return () => {
+      if (typeof cancel === "function") cancel();
+    };
   }, [applyDocTitleLater, molecule?.title]);
 
   useEffect(() => {
@@ -77,15 +91,20 @@ const ShareQrPage = () => {
       const hash = typeof window !== "undefined" ? window.location.hash : "";
       const payload = hash.startsWith("#") ? hash.slice(1) : hash;
       if (!payload) {
-        setError("Missing payload in URL hash. Expected /qr#<payload>.");
-        setMolecule(null);
-        setLoading(false);
+        if (typeof window !== "undefined") {
+          const { origin, pathname } = window.location;
+          const parts = pathname.split("/");
+          // assume app root is the first non-empty segment (e.g. /ms/qr -> /ms)
+          const first = parts.find((p) => p.length > 0);
+          const base = first && first.toLowerCase() !== "qr" ? `/${first}` : "";
+          window.location.href = origin + base + "/";
+        }
         return;
       }
       try {
-    const decoded = decodeShareSegment(payload);
-    // Update title with a slight delay to avoid race with hydration
-    applyDocTitleLater(decoded.molecule.title ?? null, 220);
+        const decoded = decodeShareSegment(payload);
+        // Update title with a slight delay to avoid race with hydration
+        applyDocTitleLater(decoded.molecule.title ?? null, 220);
         setMolecule(decoded.molecule);
         setStyle({ ...decoded.style });
         setError(null);
@@ -97,7 +116,9 @@ const ShareQrPage = () => {
           setMolecule(null);
         } else {
           console.error(e);
-          setError("Invalid or corrupted QR payload. Please request a new QR code.");
+          setError(
+            "Invalid or corrupted QR payload. Please request a new QR code."
+          );
           setMolecule(null);
         }
       } finally {
@@ -134,11 +155,12 @@ const ShareQrPage = () => {
       if (glb) URL.revokeObjectURL(glb.url);
       if (usdz) URL.revokeObjectURL(usdz.url);
 
-      const [{ prepareSceneForExport }, { exportGlb }, { exportUsdz }] = await Promise.all([
-        import("@/lib/export/prepareScene"),
-        import("@/lib/export/exportGlb"),
-        import("@/lib/export/exportUsdz"),
-      ]);
+      const [{ prepareSceneForExport }, { exportGlb }, { exportUsdz }] =
+        await Promise.all([
+          import("@/lib/export/prepareScene"),
+          import("@/lib/export/exportGlb"),
+          import("@/lib/export/exportUsdz"),
+        ]);
 
       const scene = prepareSceneForExport(viewerGroup);
       const glbBlob = await exportGlb(scene);
@@ -168,10 +190,12 @@ const ShareQrPage = () => {
 
   const openAR = useCallback(async () => {
     if (!viewerGroup) return;
-    const isiOS = typeof navigator !== "undefined" && (
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (((navigator as any).platform === 'MacIntel' || /Mac/.test(String((navigator as any).platform))) && (navigator as any).maxTouchPoints > 1)
-    );
+    const isiOS =
+      typeof navigator !== "undefined" &&
+      (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (((navigator as any).platform === "MacIntel" ||
+          /Mac/.test(String((navigator as any).platform))) &&
+          (navigator as any).maxTouchPoints > 1));
     try {
       setArStatus(null);
       setArExporting(true);
@@ -183,13 +207,16 @@ const ShareQrPage = () => {
       if (!built) throw new Error("Failed to build AR artifacts");
 
       // Ensure <model-viewer> custom element is defined & ref attached
-      try { await (customElements as any).whenDefined?.('model-viewer'); } catch {}
+      try {
+        await (customElements as any).whenDefined?.("model-viewer");
+      } catch {}
 
       const waitForMv = async () => {
-        for (let i = 0; i < 15; i++) { // up to ~1.2s
+        for (let i = 0; i < 15; i++) {
+          // up to ~1.2s
           const mvEl = mvRef.current as any;
           if (mvEl) return mvEl;
-          await new Promise(r => setTimeout(r, 80));
+          await new Promise((r) => setTimeout(r, 80));
         }
         throw new Error("AR viewer not ready");
       };
@@ -205,8 +232,9 @@ const ShareQrPage = () => {
       // We'll retry a few times before giving up, and attempt activateAR regardless as last resort.
       let can = mv.canActivateAR;
       if (can === false) {
-        for (let i = 0; i < 8; i++) { // ~1.2s extra
-          await new Promise(r => setTimeout(r, 150));
+        for (let i = 0; i < 8; i++) {
+          // ~1.2s extra
+          await new Promise((r) => setTimeout(r, 150));
           can = mv.canActivateAR;
           if (can) break;
         }
@@ -220,9 +248,11 @@ const ShareQrPage = () => {
           setTimeout(() => {
             // If after a grace period no AR session started (heuristic: button still enabled & no status), inform user.
             if (!mv.__arSessionStarted && !arExporting) {
-              setArStatus(isiOS
-                ? "AR Quick Look may require an extra tap to enter AR on this device."
-                : "AR launch may not be supported for local models on this Android device.");
+              setArStatus(
+                isiOS
+                  ? "AR Quick Look may require an extra tap to enter AR on this device."
+                  : "AR launch may not be supported for local models on this Android device."
+              );
             }
           }, 1600);
         }
@@ -230,9 +260,11 @@ const ShareQrPage = () => {
         // Differentiate potential root causes for Android Scene Viewer vs WebXR
         const msg = (err as Error)?.message || "";
         if (/blob|object url/i.test(msg)) {
-          setArStatus(isiOS
-            ? "iOS AR Quick Look could not open the model URL."
-            : "Android AR may require a publicly hosted model file (blob URL not accepted)." );
+          setArStatus(
+            isiOS
+              ? "iOS AR Quick Look could not open the model URL."
+              : "Android AR may require a publicly hosted model file (blob URL not accepted)."
+          );
         } else {
           setArStatus(msg || "Failed to open AR");
         }
@@ -247,22 +279,32 @@ const ShareQrPage = () => {
 
   // Detect AR support with a slight delay (so main content settles) and animate button in if supported
   useEffect(() => {
-    if (!molecule) { setArSupported(null); return; }
+    if (!molecule) {
+      setArSupported(null);
+      return;
+    }
     let cancelled = false;
     const detect = async () => {
       const delay = 800; // ms delay before detection & reveal
-      await new Promise(r => setTimeout(r, delay));
+      await new Promise((r) => setTimeout(r, delay));
       if (cancelled) return;
-      const isiOS = typeof navigator !== 'undefined' && (
-        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (((navigator as any).platform === 'MacIntel' || /Mac/.test(String((navigator as any).platform))) && (navigator as any).maxTouchPoints > 1)
-      );
-      const isAndroidChrome = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent) && /Chrome/.test(navigator.userAgent);
+      const isiOS =
+        typeof navigator !== "undefined" &&
+        (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (((navigator as any).platform === "MacIntel" ||
+            /Mac/.test(String((navigator as any).platform))) &&
+            (navigator as any).maxTouchPoints > 1));
+      const isAndroidChrome =
+        typeof navigator !== "undefined" &&
+        /Android/.test(navigator.userAgent) &&
+        /Chrome/.test(navigator.userAgent);
       let webxr = false;
       try {
         const xr: any = (navigator as any).xr;
         if (xr?.isSessionSupported) {
-          webxr = await xr.isSessionSupported('immersive-ar').catch(() => false);
+          webxr = await xr
+            .isSessionSupported("immersive-ar")
+            .catch(() => false);
         }
       } catch {}
       const supported = isiOS || isAndroidChrome || webxr;
@@ -275,7 +317,9 @@ const ShareQrPage = () => {
       }
     };
     detect();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [molecule]);
 
   // Automatically stop the pulse after its finite animation cycles (~2.3s total)
@@ -288,8 +332,11 @@ const ShareQrPage = () => {
   useEffect(() => {
     (async () => {
       try {
-        if (typeof window !== 'undefined' && !customElements.get('model-viewer')) {
-          await import('@google/model-viewer');
+        if (
+          typeof window !== "undefined" &&
+          !customElements.get("model-viewer")
+        ) {
+          await import("@google/model-viewer");
         }
       } catch {}
     })();
@@ -327,7 +374,9 @@ const ShareQrPage = () => {
       return;
     }
     if (!supportsSubtle) {
-      setPwErr("Encryption requires Web Crypto (HTTPS). Open this page over HTTPS.");
+      setPwErr(
+        "Encryption requires Web Crypto (HTTPS). Open this page over HTTPS."
+      );
       setPwShake(true);
       setTimeout(() => setPwShake(false), 350);
       return;
@@ -344,7 +393,9 @@ const ShareQrPage = () => {
       setEncPayload(null);
     } catch (err) {
       const m = (err as Error)?.message || "";
-      if (/wrong password/i.test(m)) setPwErr("Wrong password or data corrupted"); else setPwErr("Failed to decrypt");
+      if (/wrong password/i.test(m))
+        setPwErr("Wrong password or data corrupted");
+      else setPwErr("Failed to decrypt");
       setPwShake(true);
       setTimeout(() => setPwShake(false), 350);
     } finally {
@@ -354,7 +405,9 @@ const ShareQrPage = () => {
 
   useEffect(() => {
     // Ensure page starts at top; avoids initial offset on some iOS cases
-    try { window.scrollTo(0, 0); } catch {}
+    try {
+      window.scrollTo(0, 0);
+    } catch {}
   }, []);
 
   return (
@@ -379,12 +432,18 @@ const ShareQrPage = () => {
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-50 text-sky-600 ring-1 ring-sky-200">
                     <LockClosedIcon className="h-4 w-4" />
                   </div>
-                  <h2 className="text-base font-semibold tracking-wide text-slate-900">Encrypted</h2>
+                  <h2 className="text-base font-semibold tracking-wide text-slate-900">
+                    Encrypted
+                  </h2>
                 </div>
-                <p className="mt-1 text-sm text-slate-600">Enter password to view.</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  Enter password to view.
+                </p>
                 <motion.div
                   className="mt-3 relative"
-                  animate={pwShake ? { x: [0, -6, 6, -4, 4, -2, 2, 0] } : { x: 0 }}
+                  animate={
+                    pwShake ? { x: [0, -6, 6, -4, 4, -2, 2, 0] } : { x: 0 }
+                  }
                   transition={{ duration: 0.35, ease: "easeInOut" }}
                 >
                   <input
@@ -392,8 +451,16 @@ const ShareQrPage = () => {
                     className={`h-9 w-full rounded-md bg-white/95 pl-2 pr-10 text-base text-slate-800 placeholder:text-slate-400 shadow-inner ring-1 focus:outline-none ${pwErr || pwShake ? "ring-rose-300" : "ring-slate-200 focus:ring-sky-300"}`}
                     placeholder="Password"
                     value={pw}
-                    onChange={(e)=>{ setPw(e.target.value); setPwErr(null); }}
-                    onKeyDown={(e)=>{ if (e.key === "Enter") { e.preventDefault(); tryDecrypt(); } }}
+                    onChange={(e) => {
+                      setPw(e.target.value);
+                      setPwErr(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        tryDecrypt();
+                      }
+                    }}
                     disabled={pwBusy}
                     aria-invalid={Boolean(pwErr)}
                   />
@@ -407,16 +474,25 @@ const ShareQrPage = () => {
                     {pwBusy ? (
                       <ArrowPathIcon className="h-4 w-4 animate-spin" />
                     ) : (
-                      <motion.span whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.96 }} className="inline-flex">
+                      <motion.span
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.96 }}
+                        className="inline-flex"
+                      >
                         <ArrowRightIcon className="h-4 w-4" />
                       </motion.span>
                     )}
                   </button>
                 </motion.div>
-                {(!supportsSubtle && !pwErr) ? (
-                  <div className="mt-2 text-xs text-amber-700">Encryption/decryption requires a secure context. Please open this page over HTTPS.</div>
+                {!supportsSubtle && !pwErr ? (
+                  <div className="mt-2 text-xs text-amber-700">
+                    Encryption/decryption requires a secure context. Please open
+                    this page over HTTPS.
+                  </div>
                 ) : null}
-                {pwErr ? <div className="mt-2 text-xs text-rose-700">{pwErr}</div> : null}
+                {pwErr ? (
+                  <div className="mt-2 text-xs text-rose-700">{pwErr}</div>
+                ) : null}
               </motion.div>
             </div>
           </motion.div>
@@ -425,14 +501,22 @@ const ShareQrPage = () => {
       {molecule?.title ? (
         <div className="pointer-events-none fixed left-3 top-3 z-[65]">
           <div className="pointer-events-auto inline-flex max-w-[70vw] items-center gap-1 rounded-lg bg-white/70 px-2.5 py-1.5 text-sm text-slate-800 shadow-sm ring-1 ring-slate-200/80 backdrop-blur-md">
-            <span className="truncate font-semibold tracking-wide">{molecule.title}</span>
+            <span className="truncate font-semibold tracking-wide">
+              {molecule.title}
+            </span>
           </div>
         </div>
       ) : null}
 
       {loading ? (
         <div className="absolute inset-0 flex items-center justify-center text-slate-500">
-          Decoding QR payload...
+          Decoding payload...
+        </div>
+      ) : error ? (
+        <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
+          <div className="max-w-md rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 shadow-sm">
+            {error}
+          </div>
         </div>
       ) : (
         <Viewer
@@ -443,16 +527,22 @@ const ShareQrPage = () => {
         />
       )}
 
-  <div className="pointer-events-none fixed inset-0 z-[60]" style={{
-        paddingTop: "max(0px, env(safe-area-inset-top))",
-        paddingRight: "max(0px, env(safe-area-inset-right))",
-        paddingBottom: "max(0px, env(safe-area-inset-bottom))",
-        paddingLeft: "max(0px, env(safe-area-inset-left))",
-      }}>
-        <div className="pointer-events-auto fixed" style={{
-          right: "max(1rem, env(safe-area-inset-right))",
-          top: "max(1rem, env(safe-area-inset-top))",
-        }}>
+      <div
+        className="pointer-events-none fixed inset-0 z-[60]"
+        style={{
+          paddingTop: "max(0px, env(safe-area-inset-top))",
+          paddingRight: "max(0px, env(safe-area-inset-right))",
+          paddingBottom: "max(0px, env(safe-area-inset-bottom))",
+          paddingLeft: "max(0px, env(safe-area-inset-left))",
+        }}
+      >
+        <div
+          className="pointer-events-auto fixed"
+          style={{
+            right: "max(1rem, env(safe-area-inset-right))",
+            top: "max(1rem, env(safe-area-inset-top))",
+          }}
+        >
           <button
             type="button"
             aria-label="Rendering Options"
@@ -474,75 +564,99 @@ const ShareQrPage = () => {
             )}
           </button>
         </div>
- 
-         <AnimatePresence>
-           {arSupported && molecule ? (
-             <motion.div
-               key="ar-btn-wrapper"
-               className="pointer-events-none absolute inset-x-0 flex justify-center"
-               style={{ bottom: "2.25rem" }}
-               initial={{ opacity: 0, scale: 0.6, y: 18 }}
-               animate={{ opacity: 1, scale: 1, y: 0 }}
-               exit={{ opacity: 0, scale: 0.6, y: 12 }}
-               transition={{ type: "spring", stiffness: 340, damping: 36, mass: 0.6 }}
-             >
-               <motion.button
-                 type="button"
-                 aria-label={arExporting ? "Preparing AR assets" : "Open AR"}
-                 aria-busy={arExporting}
-                 onClick={openAR}
-                 disabled={!molecule || arExporting}
-                 className="pointer-events-auto relative h-12 w-12 rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-                 whileTap={{ scale: 0.9 }}
-               >
-                 {arPulse ? (
-                   <>
-                     {/* Soft glow pulse (two gentle expansions) */}
-                     <motion.span
-                       className="pointer-events-none absolute inset-0 rounded-full bg-sky-400/25"
-                       initial={{ scale: 0.9, opacity: 0.35 }}
-                       animate={{ scale: [0.9, 1.25], opacity: [0.35, 0] }}
-                       transition={{ duration: 1.1, ease: "easeOut", repeat: 1, repeatDelay: 0.3 }}
-                     />
-                     {/* Outline ripple (slight) */}
-                     <motion.span
-                       className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-sky-300/60"
-                       initial={{ scale: 1, opacity: 0.75 }}
-                       animate={{ scale: [1, 1.12], opacity: [0.75, 0] }}
-                       transition={{ duration: 1.1, ease: "easeOut", repeat: 1, repeatDelay: 0.3, delay: 0.15 }}
-                     />
-                   </>
-                 ) : null}
-                 {arExporting ? (
-                   <ArrowPathIcon className="mx-auto h-5 w-5 animate-spin" />
-                 ) : (
-                   <CubeIcon className="mx-auto h-5 w-5" />
-                 )}
-               </motion.button>
-             </motion.div>
-           ) : null}
-         </AnimatePresence>
- 
-         <div className="pointer-events-none fixed select-none text-[10px] text-slate-400" style={{ right: "max(0.5rem, env(safe-area-inset-right))", bottom: "max(0.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))" }}>
-           <div className="pointer-events-auto inline-flex items-center gap-1 rounded-md bg-white/50 px-1.5 py-0.5 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm">
-             <span className="opacity-80">Powered by</span>
-             <a
-               href={REPO_URL}
-               target="_blank"
-               rel="noreferrer"
-               className="font-medium text-slate-500 underline-offset-2 hover:text-sky-600 hover:underline"
-             >
-               MolStamp
-             </a>
-           </div>
-         </div>
-       </div>
+
+        <AnimatePresence>
+          {arSupported && molecule ? (
+            <motion.div
+              key="ar-btn-wrapper"
+              className="pointer-events-none absolute inset-x-0 flex justify-center"
+              style={{ bottom: "2.25rem" }}
+              initial={{ opacity: 0, scale: 0.6, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.6, y: 12 }}
+              transition={{
+                type: "spring",
+                stiffness: 340,
+                damping: 36,
+                mass: 0.6,
+              }}
+            >
+              <motion.button
+                type="button"
+                aria-label={arExporting ? "Preparing AR assets" : "Open AR"}
+                aria-busy={arExporting}
+                onClick={openAR}
+                disabled={!molecule || arExporting}
+                className="pointer-events-auto relative h-12 w-12 rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition hover:border-sky-300 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                whileTap={{ scale: 0.9 }}
+              >
+                {arPulse ? (
+                  <>
+                    {/* Soft glow pulse (two gentle expansions) */}
+                    <motion.span
+                      className="pointer-events-none absolute inset-0 rounded-full bg-sky-400/25"
+                      initial={{ scale: 0.9, opacity: 0.35 }}
+                      animate={{ scale: [0.9, 1.25], opacity: [0.35, 0] }}
+                      transition={{
+                        duration: 1.1,
+                        ease: "easeOut",
+                        repeat: 1,
+                        repeatDelay: 0.3,
+                      }}
+                    />
+                    {/* Outline ripple (slight) */}
+                    <motion.span
+                      className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-sky-300/60"
+                      initial={{ scale: 1, opacity: 0.75 }}
+                      animate={{ scale: [1, 1.12], opacity: [0.75, 0] }}
+                      transition={{
+                        duration: 1.1,
+                        ease: "easeOut",
+                        repeat: 1,
+                        repeatDelay: 0.3,
+                        delay: 0.15,
+                      }}
+                    />
+                  </>
+                ) : null}
+                {arExporting ? (
+                  <ArrowPathIcon className="mx-auto h-5 w-5 animate-spin" />
+                ) : (
+                  <CubeIcon className="mx-auto h-5 w-5" />
+                )}
+              </motion.button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <div
+          className="pointer-events-none fixed select-none text-[10px] text-slate-400"
+          style={{
+            right: "max(0.5rem, env(safe-area-inset-right))",
+            bottom: "max(0.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))",
+          }}
+        >
+          <div className="pointer-events-auto inline-flex items-center gap-1 rounded-md bg-white/50 px-1.5 py-0.5 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm">
+            <span className="opacity-80">Powered by</span>
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-slate-500 underline-offset-2 hover:text-sky-600 hover:underline"
+            >
+              MolStamp
+            </a>
+          </div>
+        </div>
+      </div>
 
       <div
         ref={popoverRef}
         className={
           `fixed z-[55] w-[clamp(300px,86vw,360px)] transition-opacity duration-150 ` +
-          (optionsOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none")
+          (optionsOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none")
         }
         style={{
           right: "max(1rem, env(safe-area-inset-right))",

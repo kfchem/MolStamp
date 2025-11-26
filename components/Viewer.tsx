@@ -245,14 +245,6 @@ export const Viewer = ({
 
   return (
   <div className={`relative w-full overflow-hidden rounded-xl border border-slate-300 bg-white ${className ?? "h-[520px]"}`}>
-      {molecule ? null : (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center">
-          <div className="rounded-2xl border border-slate-200 bg-white/80 px-6 py-5 shadow-sm backdrop-blur">
-              <p className="text-base font-semibold text-slate-900">Drop or click to load a molecule</p>
-              <p className="mt-1 text-sm text-slate-600">SDF/MOL or XYZ 3D data — processed locally.</p>
-          </div>
-        </div>
-      )}
   {/* Rotation overlay when in rotate mode */}
       {rotateMode && molecule ? (
         <div

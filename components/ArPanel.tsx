@@ -7,11 +7,11 @@ type ModelViewerProps = DetailedHTMLProps<
   HTMLElement
 > & {
   src?: string;
-  'ios-src'?: string;
-  ar?: boolean | 'true' | 'false';
-  'ar-modes'?: string;
-  'camera-controls'?: boolean | 'true' | 'false';
-  autoplay?: boolean | 'true' | 'false';
+  "ios-src"?: string;
+  ar?: boolean | "true" | "false";
+  "ar-modes"?: string;
+  "camera-controls"?: boolean | "true" | "false";
+  autoplay?: boolean | "true" | "false";
 };
 const ModelViewer = "model-viewer" as unknown as (
   props: ModelViewerProps
@@ -62,8 +62,11 @@ export const ArPanel = ({
     // Register model-viewer element locally (no external CDN)
     (async () => {
       try {
-        if (typeof window !== 'undefined' && !customElements.get('model-viewer')) {
-          await import('@google/model-viewer');
+        if (
+          typeof window !== "undefined" &&
+          !customElements.get("model-viewer")
+        ) {
+          await import("@google/model-viewer");
         }
       } catch {}
     })();
@@ -150,7 +153,11 @@ export const ArPanel = ({
       const builtGlb = glb ?? (await buildIfNeeded("glb"));
       if (!builtGlb) throw new Error("GLB not available for AR");
 
-  const mv = mvRef.current as unknown as { canActivateAR?: boolean; activateAR?: () => void; setAttribute: (name: string, value: string) => void } | null;
+      const mv = mvRef.current as unknown as {
+        canActivateAR?: boolean;
+        activateAR?: () => void;
+        setAttribute: (name: string, value: string) => void;
+      } | null;
       if (!mv) throw new Error("AR viewer not ready");
 
       try {
@@ -158,7 +165,10 @@ export const ArPanel = ({
         if (usdz) mv.setAttribute("ios-src", usdz.url);
       } catch {}
 
-      if (typeof mv.canActivateAR !== "undefined" && mv.canActivateAR === false) {
+      if (
+        typeof mv.canActivateAR !== "undefined" &&
+        mv.canActivateAR === false
+      ) {
         setStatus("AR is not supported on this device.");
         return;
       }
@@ -174,7 +184,7 @@ export const ArPanel = ({
     async (kind: "glb" | "usdz") => {
       const art = await buildIfNeeded(kind);
       if (!art) return;
-  const filename = kind === "glb" ? "molstamp.glb" : "molstamp.usdz";
+      const filename = kind === "glb" ? "molstamp.glb" : "molstamp.usdz";
       const a = document.createElement("a");
       a.href = art.url;
       a.download = filename;

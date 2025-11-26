@@ -5,35 +5,9 @@ import { AnimatedSelect } from "./AnimatedSelect";
 import { AnimatePresence, motion } from "framer-motion";
 import { ClipboardDocumentCheckIcon } from "@heroicons/react/24/outline";
 import { LockClosedIcon, LockOpenIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import QRCode from "qrcode";
-
-// Inline brand SVG to avoid runtime fetch for center icon
-const BRAND_SVG = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="210mm"
-   height="210mm"
-   viewBox="0 0 210 210"
-   version="1.1"
-   id="svg5"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
-  <g id="layer1">
-    <g transform="matrix(0.36195336,0,0,0.37177477,-70.996564,-28.838917)" id="g848">
-      <path d="m 285.361,244.022 199.009,-114.8 202.666,117.009 0.085,229.747 -199.009,114.8 -202.666,-117.009 z" stroke="#2082c5" stroke-width="96.6667" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" fill="#2082c5" fill-rule="evenodd" id="path824" />
-      <path d="m 352.154,282.585 134.841,-75.473 131.274,75.791 2.059,154.512 -134.841,75.473 -131.273,-75.791 z" stroke="#ffffff" stroke-width="26.3333" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" fill="#ffffff" fill-rule="evenodd" id="path826" />
-      <path d="m 519,533.5 c 0,-52.743 42.757,-95.5 95.5,-95.5 52.743,0 95.5,42.757 95.5,95.5 0,52.743 -42.757,95.5 -95.5,95.5 -52.743,0 -95.5,-42.757 -95.5,-95.5 z" fill="#ffffff" fill-rule="evenodd" id="path828" />
-      <path d="m 574.753,563.4 -91.968,-120.269 33.539,-34.532 122.901,88.42 z" fill="#e28a50" fill-rule="evenodd" id="path830" />
-      <path d="m 539,533 c 0,-41.974 34.026,-76 76,-76 41.974,0 76,34.026 76,76 0,41.974 -34.026,76 -76,76 -41.974,0 -76,-34.026 -76,-76 z" fill="#c56220" fill-rule="evenodd" id="path832" />
-      <path d="m 355,491 c 0,-23.748 19.476,-43 43.5,-43 24.024,0 43.5,19.252 43.5,43 0,23.748 -19.476,43 -43.5,43 -24.024,0 -43.5,-19.252 -43.5,-43 z" fill="#ffffff" fill-rule="evenodd" id="path834" />
-      <path d="m 499.583,455.144 -89.664,51.661 -15.957,-23.49 81.066,-64.317 z" fill="#e28a50" fill-rule="evenodd" id="path836" />
-      <path d="m 370,492 c 0,-15.464 12.536,-28 28,-28 15.464,0 28,12.536 28,28 0,15.464 -12.536,28 -28,28 -15.464,0 -28,-12.536 -28,-28 z" fill="#c56220" fill-rule="evenodd" id="path838" />
-      <path d="m 472,282.5 c 0,-37.279 30.221,-67.5 67.5,-67.5 37.279,0 67.5,30.221 67.5,67.5 0,37.279 -30.221,67.5 -67.5,67.5 -37.279,0 -67.5,-30.221 -67.5,-67.5 z" fill="#ffffff" fill-rule="evenodd" id="path840" />
-      <path d="m 566.307,319.759 -34.985,97.46 -44.773,-12.027 18.56,-101.872 z" fill="#e28a50" fill-rule="evenodd" id="path842" />
-      <path d="m 486,284.5 c 0,-29.547 24.177,-53.5 54,-53.5 29.823,0 54,23.953 54,53.5 0,29.547 -24.177,53.5 -54,53.5 -29.823,0 -54,-23.953 -54,-53.5 z" fill="#c56220" fill-rule="evenodd" id="path844" />
-      <path d="m 454,429.5 c 0,-27.338 22.162,-49.5 49.5,-49.5 27.338,0 49.5,22.162 49.5,49.5 0,27.338 -22.162,49.5 -49.5,49.5 -27.338,0 -49.5,-22.162 -49.5,-49.5 z" fill="#c56220" fill-rule="evenodd" id="path846" />
-    </g>
-  </g>
-</svg>`;
+import { BRAND_SVG } from "@/lib/branding";
 
 export type ErrorCorrectionLevel = "L" | "M" | "Q" | "H";
 type DotShape = "square" | "round" | "diamond" | "rounded";
@@ -58,7 +32,24 @@ export type QrMakerProps = {
   onChangePassword?: (v: string) => void;
 };
 
-export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBonds, onChangeOmitBonds, payloadBytes, precisionDrop, onChangePrecisionDrop, scaleExp, useDelta, onChangeUseDelta, encrypt, onChangeEncrypt, password, onChangePassword }: QrMakerProps) => {
+export const QrMaker = ({
+  shareUrl,
+  encodedLength,
+  title,
+  onChangeTitle,
+  omitBonds,
+  onChangeOmitBonds,
+  payloadBytes,
+  precisionDrop,
+  onChangePrecisionDrop,
+  scaleExp,
+  useDelta,
+  onChangeUseDelta,
+  encrypt,
+  onChangeEncrypt,
+  password,
+  onChangePassword,
+}: QrMakerProps) => {
   const [ecc, setEcc] = useState<ErrorCorrectionLevel>("L");
   const [dotShape, setDotShape] = useState<DotShape>("square");
   const [centerIcon, setCenterIcon] = useState<CenterIcon>("none");
@@ -72,13 +63,25 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
   const copiedTimerRef = useRef<number | null>(null);
   const [encShake, setEncShake] = useState<boolean>(false);
   const sanitizeTitleLocal = useCallback((s: string) => {
-    const allowed = new Set<string>([' ', '-', ...'0123456789', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', ...'abcdefghijklmnopqrstuvwxyz']);
-    let out = '';
+    const allowed = new Set<string>([
+      " ",
+      "-",
+      ..."0123456789",
+      ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+      ..."abcdefghijklmnopqrstuvwxyz",
+    ]);
+    let out = "";
     for (const ch of s) {
-      if (allowed.has(ch)) out += ch; else if (/\s/.test(ch)) out += ' '; else out += '-';
+      if (allowed.has(ch)) out += ch;
+      else if (/\s/.test(ch)) out += " ";
+      else out += "-";
       if (out.length >= 63) break;
     }
-    out = out.replace(/\s{2,}/g, ' ').replace(/^-+/, '').replace(/-+$/, '').trim();
+    out = out
+      .replace(/\s{2,}/g, " ")
+      .replace(/^-+/, "")
+      .replace(/-+$/, "")
+      .trim();
     return out.slice(0, 63);
   }, []);
 
@@ -108,7 +111,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       });
 
     const getSvgSize = (svg: string, fallback: number) => {
-      const vb = svg.match(/viewBox\s*=\s*"[^"]*\b0\s+0\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)"/i);
+      const vb = svg.match(
+        /viewBox\s*=\s*"[^"]*\b0\s+0\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)"/i
+      );
       if (vb) {
         const w = parseFloat(vb[1]);
         const h = parseFloat(vb[2]);
@@ -178,8 +183,10 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       try {
         const img = await loadImage(iconHref);
         const ratio = img.width / img.height;
-        let w = box, h = box;
-        if (ratio > 1) h = box / ratio; else w = box * ratio;
+        let w = box,
+          h = box;
+        if (ratio > 1) h = box / ratio;
+        else w = box * ratio;
 
         const off = document.createElement("canvas");
         off.width = Math.ceil(w);
@@ -225,7 +232,10 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       });
       const svgSize = getSvgSize(svg, 256);
       const iconHref = await ensureIconHref();
-      const svgWithIcon = svg.replace(/<\/svg>\s*$/, `${buildCenterIconSvg(svgSize, iconHref)}</svg>`);
+      const svgWithIcon = svg.replace(
+        /<\/svg>\s*$/,
+        `${buildCenterIconSvg(svgSize, iconHref)}</svg>`
+      );
 
       const basePng = await QRCode.toDataURL(shareUrl, {
         errorCorrectionLevel: ecc,
@@ -248,7 +258,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
     };
 
     const buildCustom = async (shape: Exclude<DotShape, "square">) => {
-      const qr: any = (QRCode as any).create(shareUrl, { errorCorrectionLevel: ecc });
+      const qr: any = (QRCode as any).create(shareUrl, {
+        errorCorrectionLevel: ecc,
+      });
       const size: number = qr.modules.size;
       const data: boolean[] = qr.modules.data;
       const margin = 1;
@@ -264,7 +276,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       parts.push(`<rect width="100%" height="100%" fill="${LIGHT}"/>`);
 
       const inFinder = (x: number, y: number) =>
-        (x < 7 && y < 7) || (x >= size - 7 && y < 7) || (x < 7 && y >= size - 7);
+        (x < 7 && y < 7) ||
+        (x >= size - 7 && y < 7) ||
+        (x < 7 && y >= size - 7);
 
       const sSvg = cell * 0.9;
       const sPng = cellPng * 0.9;
@@ -282,15 +296,21 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
           const cy = (y + margin + 0.5) * cell;
 
           if (shape === "round") {
-            parts.push(`<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${rSvg.toFixed(2)}" fill="${DARK}"/>`);
+            parts.push(
+              `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${rSvg.toFixed(2)}" fill="${DARK}"/>`
+            );
           } else if (shape === "diamond") {
             const x0 = (cx - sSvg / 2).toFixed(2);
             const y0 = (cy - sSvg / 2).toFixed(2);
-            parts.push(`<rect x="${x0}" y="${y0}" width="${sSvg.toFixed(2)}" height="${sSvg.toFixed(2)}" fill="${DARK}" transform="rotate(45 ${cx.toFixed(2)} ${cy.toFixed(2)})"/>`);
+            parts.push(
+              `<rect x="${x0}" y="${y0}" width="${sSvg.toFixed(2)}" height="${sSvg.toFixed(2)}" fill="${DARK}" transform="rotate(45 ${cx.toFixed(2)} ${cy.toFixed(2)})"/>`
+            );
           } else if (shape === "rounded") {
             const x0 = (cx - sSvg / 2).toFixed(2);
             const y0 = (cy - sSvg / 2).toFixed(2);
-            parts.push(`<rect x="${x0}" y="${y0}" width="${sSvg.toFixed(2)}" height="${sSvg.toFixed(2)}" rx="${cornerSvg.toFixed(2)}" ry="${cornerSvg.toFixed(2)}" fill="${DARK}"/>`);
+            parts.push(
+              `<rect x="${x0}" y="${y0}" width="${sSvg.toFixed(2)}" height="${sSvg.toFixed(2)}" rx="${cornerSvg.toFixed(2)}" ry="${cornerSvg.toFixed(2)}" fill="${DARK}"/>`
+            );
           }
         }
       }
@@ -301,9 +321,15 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
         const s7 = 7 * cell;
         const s5 = 5 * cell;
         const s3 = 3 * cell;
-        parts.push(`<rect x="${x}" y="${y}" width="${s7}" height="${s7}" fill="${DARK}"/>`);
-        parts.push(`<rect x="${x + cell}" y="${y + cell}" width="${s5}" height="${s5}" fill="${LIGHT}"/>`);
-        parts.push(`<rect x="${x + 2 * cell}" y="${y + 2 * cell}" width="${s3}" height="${s3}" fill="${DARK}"/>`);
+        parts.push(
+          `<rect x="${x}" y="${y}" width="${s7}" height="${s7}" fill="${DARK}"/>`
+        );
+        parts.push(
+          `<rect x="${x + cell}" y="${y + cell}" width="${s5}" height="${s5}" fill="${LIGHT}"/>`
+        );
+        parts.push(
+          `<rect x="${x + 2 * cell}" y="${y + 2 * cell}" width="${s3}" height="${s3}" fill="${DARK}"/>`
+        );
       };
       drawFinder(0, 0);
       drawFinder(size - 7, 0);
@@ -364,7 +390,14 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
             ctx.fillRect(-sPng / 2, -sPng / 2, sPng, sPng);
             ctx.restore();
           } else if (shape === "rounded") {
-            drawRoundedRect(ctx, cx - sPng / 2, cy - sPng / 2, sPng, sPng, cornerPng);
+            drawRoundedRect(
+              ctx,
+              cx - sPng / 2,
+              cy - sPng / 2,
+              sPng,
+              sPng,
+              cornerPng
+            );
           }
         }
       }
@@ -377,7 +410,12 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
         ctx.fillStyle = LIGHT;
         ctx.fillRect(x + cellPng, y + cellPng, 5 * cellPng, 5 * cellPng);
         ctx.fillStyle = DARK;
-        ctx.fillRect(x + 2 * cellPng, y + 2 * cellPng, 3 * cellPng, 3 * cellPng);
+        ctx.fillRect(
+          x + 2 * cellPng,
+          y + 2 * cellPng,
+          3 * cellPng,
+          3 * cellPng
+        );
       };
       drawFinderCanvas(0, 0);
       drawFinderCanvas(size - 7, 0);
@@ -400,10 +438,13 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       })
       .catch((qrError: Error) => {
         if (!cancelled) {
-          const msg = qrError?.message || "Failed to render QR";
-          const urlBytes = shareUrl ? new TextEncoder().encode(shareUrl).length : 0;
+          const msg = qrError?.message || "Failed to render 2D barcode";
+          const urlBytes = shareUrl
+            ? new TextEncoder().encode(shareUrl).length
+            : 0;
           const fragmentBytes = (() => {
-            if (typeof encodedLength === "number" && encodedLength >= 0) return encodedLength;
+            if (typeof encodedLength === "number" && encodedLength >= 0)
+              return encodedLength;
             if (!shareUrl) return 0;
             const i = shareUrl.indexOf("#");
             return i >= 0 ? shareUrl.length - (i + 1) : 0;
@@ -413,7 +454,10 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
             if (!b || b <= 0) return "0 KB";
             return `${(b / 1024).toFixed(1)} KB`;
           };
-          const overhead = typeof payloadBytes === "number" ? Math.max(0, fragmentBytes - payloadBytes) : null;
+          const overhead =
+            typeof payloadBytes === "number"
+              ? Math.max(0, fragmentBytes - payloadBytes)
+              : null;
           const parts = [
             `URL: ${fmt(urlBytes)}`,
             `Fragment: ${fmt(fragmentBytes)}`,
@@ -425,7 +469,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
           parts.push(`Base URL: ${fmt(baseBytes)}`);
           const detail = parts.join(" • ");
           if (/code length overflow/i.test(msg)) {
-            setError(`Payload exceeds QR capacity (${detail}). Try Bond omission, increase Coordinate step (approx.) (e.g., drop bits 0→2→4→6→8), enable Use delta encoding, or lower Error correction.`);
+            setError(
+              `Payload exceeds 2D barcode capacity (${detail}). Try Bond omission, increase Coordinate step (approx.) (e.g., drop bits 0→2→4→6→8), enable Use delta encoding, or lower Error correction.`
+            );
           } else {
             setError(`${msg} (${detail})`);
           }
@@ -438,7 +484,15 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
     return () => {
       cancelled = true;
     };
-  }, [shareUrl, ecc, dotShape, centerIcon, uploadedIconUrl, encodedLength, payloadBytes]);
+  }, [
+    shareUrl,
+    ecc,
+    dotShape,
+    centerIcon,
+    uploadedIconUrl,
+    encodedLength,
+    payloadBytes,
+  ]);
 
   const canRender = Boolean(shareUrl && qrTried && canEncode && !error);
 
@@ -466,7 +520,10 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       setCopiedId((v) => v + 1);
       setCopiedVisible(true);
       if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
-      copiedTimerRef.current = window.setTimeout(() => setCopiedVisible(false), 1200);
+      copiedTimerRef.current = window.setTimeout(
+        () => setCopiedVisible(false),
+        1200
+      );
     };
     const fallbackCopy = (text: string): boolean => {
       try {
@@ -485,7 +542,11 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       }
     };
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
         await navigator.clipboard.writeText(shareUrl);
         showToast();
         return;
@@ -499,7 +560,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
       throw new Error("Clipboard API is unavailable in this context");
     } catch (e) {
       const msg = (e as Error)?.message || "Failed to copy URL";
-      setError(`${msg}. Your browser may not allow copying here. Please copy manually.`);
+      setError(
+        `${msg}. Your browser may not allow copying here. Please copy manually.`
+      );
     }
   }, [shareUrl]);
 
@@ -507,7 +570,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
     if (!canRender || !pngUrl) return;
     const anchor = document.createElement("a");
     anchor.href = pngUrl;
-  anchor.download = "molstamp-qr.png";
+    anchor.download = "molstamp.png";
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -519,7 +582,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-  a.download = "molstamp-qr.svg";
+    a.download = "molstamp.svg";
     document.body.append(a);
     a.click();
     a.remove();
@@ -528,7 +591,10 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
 
   const [open, setOpen] = useState<boolean>(false);
   return (
-    <motion.div layout className="space-y-3 rounded-xl border border-slate-300 bg-white p-4 shadow-sm max-w-full">
+    <motion.div
+      layout
+      className="space-y-3 rounded-xl border border-slate-300 bg-white p-4 shadow-sm max-w-full"
+    >
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">Sharing</h2>
         <div className="relative">
@@ -561,7 +627,10 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
           </AnimatePresence>
         </div>
       </div>
-      <motion.div layout className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-3 overflow-hidden max-w-full">
+      <motion.div
+        layout
+        className="flex items-center justify-center rounded-lg border border-slate-200 bg-white p-3 overflow-hidden max-w-full"
+      >
         <AnimatePresence initial={false} mode="wait">
           {canRender && (svgPreview || pngUrl) ? (
             svgPreview ? (
@@ -573,14 +642,14 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 role="img"
-                aria-label="QR code"
+                aria-label="2D barcode"
                 dangerouslySetInnerHTML={{ __html: svgPreview }}
               />
             ) : (
               <motion.img
                 key="qr-png"
                 src={pngUrl!}
-                alt="QR code"
+                alt="2D barcode"
                 className="h-auto max-h-64 w-full max-w-full object-contain"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -597,7 +666,7 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              QR appears after the file loads.
+              2D barcode appears after the file loads.
             </motion.p>
           )}
         </AnimatePresence>
@@ -632,22 +701,25 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
           onClick={() => setOpen((v) => !v)}
         >
           <span>Options</span>
-          <svg
+          <ChevronDownIcon
             className={`h-4 w-4 transition-transform ${open ? "rotate-180" : "rotate-0"}`}
-            viewBox="0 0 20 20"
             aria-hidden="true"
-          >
-            <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.207l3.71-2.977a.75.75 0 1 1 .94 1.172l-4.2 3.366a.75.75 0 0 1-.94 0l-4.2-3.366a.75.75 0 0 1-.02-1.062z" />
-          </svg>
+          />
         </button>
-        <div className={`grid transition-all duration-300 ease-in-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-          <div className={`min-h-0 ${open ? "overflow-visible" : "overflow-hidden"}`}>
+        <div
+          className={`grid transition-all duration-300 ease-in-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+        >
+          <div
+            className={`min-h-0 ${open ? "overflow-visible" : "overflow-hidden"}`}
+          >
             <div className="px-3">
               <div className="py-3 space-y-4">
                 {typeof onChangeTitle === "function" ? (
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Title</label>
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Title
+                      </label>
                     </div>
                     <input
                       type="text"
@@ -655,7 +727,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                       placeholder="Optional"
                       title="Up to 63 chars; A–Z a–z 0–9 space -"
                       value={title ?? ""}
-                      onChange={(e) => onChangeTitle?.(sanitizeTitleLocal(e.target.value))}
+                      onChange={(e) =>
+                        onChangeTitle?.(sanitizeTitleLocal(e.target.value))
+                      }
                       maxLength={63}
                       disabled={!shareUrl}
                     />
@@ -663,7 +737,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                 ) : null}
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Dot shape</label>
+                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Dot shape
+                    </label>
                   </div>
                   <AnimatedSelect<DotShape>
                     className="mt-1"
@@ -680,7 +756,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                 </div>
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Center icon</label>
+                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Center icon
+                    </label>
                   </div>
                   <div className="mt-1">
                     <AnimatedSelect<CenterIcon>
@@ -688,11 +766,13 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                       onChange={(v) => {
                         if (v !== "upload" && uploadedIconUrl) {
                           setUploadedIconUrl(null);
-                          if (fileInputRef.current) fileInputRef.current.value = "";
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = "";
                         }
                         setCenterIcon(v);
                         if (v === "upload") {
-                          if (fileInputRef.current) fileInputRef.current.value = "";
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = "";
                           fileInputRef.current?.click();
                         }
                       }}
@@ -712,7 +792,8 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                         const f = e.target.files?.[0];
                         if (!f) return;
                         const reader = new FileReader();
-                        reader.onload = () => setUploadedIconUrl(reader.result as string);
+                        reader.onload = () =>
+                          setUploadedIconUrl(reader.result as string);
                         reader.readAsDataURL(f);
                       }}
                     />
@@ -720,13 +801,20 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                       <div className="mt-2 flex items-center gap-2">
                         <span className="text-xs text-slate-500">Preview:</span>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={uploadedIconUrl} alt="icon" width={32} height={32} className="h-8 w-8 object-contain rounded" />
+                        <img
+                          src={uploadedIconUrl}
+                          alt="icon"
+                          width={32}
+                          height={32}
+                          className="h-8 w-8 object-contain rounded"
+                        />
                         <button
                           type="button"
                           className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-sky-300 hover:text-sky-600"
                           onClick={() => {
                             setUploadedIconUrl(null);
-                            if (fileInputRef.current) fileInputRef.current.value = "";
+                            if (fileInputRef.current)
+                              fileInputRef.current.value = "";
                           }}
                         >
                           Clear
@@ -739,7 +827,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                 {typeof encrypt === "boolean" && onChangeEncrypt ? (
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Simple encryption</label>
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Simple encryption
+                      </label>
                     </div>
                     <div className="mt-1 flex items-center gap-2">
                       <input
@@ -774,16 +864,40 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                       >
                         <motion.div
                           className={`absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-[0.36rem] ${encrypt ? "bg-sky-500" : "bg-slate-500"}`}
-                          animate={encShake ? { left: ["0.125rem", "0.9rem", "0.2rem", "0.75rem", "0.3rem", "0.6rem", "0.125rem"] } : { left: encrypt ? "50%" : "0.125rem" }}
-                          transition={encShake ? { duration: 0.35, ease: "easeInOut" } : { type: "spring", stiffness: 300, damping: 26 }}
+                          animate={
+                            encShake
+                              ? {
+                                  left: [
+                                    "0.125rem",
+                                    "0.9rem",
+                                    "0.2rem",
+                                    "0.75rem",
+                                    "0.3rem",
+                                    "0.6rem",
+                                    "0.125rem",
+                                  ],
+                                }
+                              : { left: encrypt ? "50%" : "0.125rem" }
+                          }
+                          transition={
+                            encShake
+                              ? { duration: 0.35, ease: "easeInOut" }
+                              : { type: "spring", stiffness: 300, damping: 26 }
+                          }
                         />
                         <span className="absolute top-0.5 bottom-0.5 left-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
-                          <LockOpenIcon className={`${encrypt ? "text-slate-600" : "text-white"} h-4 w-4`} />
+                          <LockOpenIcon
+                            className={`${encrypt ? "text-slate-600" : "text-white"} h-4 w-4`}
+                          />
                         </span>
                         <span className="absolute top-0.5 bottom-0.5 right-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
-                          <LockClosedIcon className={`${encrypt ? "text-white" : "text-slate-600"} h-4 w-4`} />
+                          <LockClosedIcon
+                            className={`${encrypt ? "text-white" : "text-slate-600"} h-4 w-4`}
+                          />
                         </span>
-                        <span className="sr-only">{encrypt ? "Encrypted" : "Unencrypted"}</span>
+                        <span className="sr-only">
+                          {encrypt ? "Encrypted" : "Unencrypted"}
+                        </span>
                       </motion.button>
                     </div>
                   </div>
@@ -791,7 +905,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
 
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Error correction</label>
+                    <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Error correction
+                    </label>
                   </div>
                   <AnimatedSelect<ErrorCorrectionLevel>
                     className="mt-1"
@@ -807,30 +923,52 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                   />
                 </div>
 
-                {typeof precisionDrop !== "undefined" && onChangePrecisionDrop ? (
+                {typeof precisionDrop !== "undefined" &&
+                onChangePrecisionDrop ? (
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Coordinate step (approx.)</label>
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Coordinate step (approx.)
+                      </label>
                     </div>
                     <AnimatedSelect<string>
                       className="mt-1"
                       value={String(precisionDrop)}
-                      onChange={(v) => onChangePrecisionDrop?.(Number(v) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8)}
+                      onChange={(v) =>
+                        onChangePrecisionDrop?.(
+                          Number(v) as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+                        )
+                      }
                       disabled={!shareUrl}
                       options={(() => {
                         const e = typeof scaleExp === "number" ? scaleExp : 0;
-                        const label = (drop: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => {
+                        const label = (
+                          drop: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+                        ) => {
                           const step = Math.pow(2, e + drop) / 1000; // Å
                           const fmtNum = (v: number) => {
                             const s = v.toFixed(4);
-                            return s.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+                            return s
+                              .replace(/(\.\d*?[1-9])0+$/, "$1")
+                              .replace(/\.0+$/, "");
                           };
                           const fmt = `${fmtNum(step)} Å`;
-                          const tag = step < 0.01 ? "High" : step < 0.05 ? "Med" : step < 0.2 ? "Low" : "Very low";
+                          const tag =
+                            step < 0.01
+                              ? "High"
+                              : step < 0.05
+                                ? "Med"
+                                : step < 0.2
+                                  ? "Low"
+                                  : "Very low";
                           return `${fmt} (${tag})`;
                         };
                         const arr: { value: string; label: string }[] = [];
-                        for (let d = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8; d <= 8; d = (d + 1) as any) {
+                        for (
+                          let d = 0 as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+                          d <= 8;
+                          d = (d + 1) as any
+                        ) {
                           arr.push({ value: String(d), label: label(d) });
                         }
                         return arr;
@@ -841,14 +979,18 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                 {typeof omitBonds === "boolean" && onChangeOmitBonds ? (
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Bond data</label>
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Bond data
+                      </label>
                     </div>
                     <div className="mt-1">
                       <button
                         type="button"
                         role="switch"
                         aria-checked={omitBonds}
-                        aria-label={omitBonds ? "Auto-generate bonds" : "Include bonds"}
+                        aria-label={
+                          omitBonds ? "Auto-generate bonds" : "Include bonds"
+                        }
                         onClick={() => onChangeOmitBonds?.(!omitBonds)}
                         disabled={!shareUrl}
                         className={`relative h-[38px] w-full rounded-md p-0.5 shadow-sm transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${omitBonds ? "bg-sky-50 border border-sky-300 hover:border-sky-400" : "bg-white border border-slate-200 hover:border-sky-300"}`}
@@ -856,15 +998,29 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                         <motion.div
                           className={`absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-[0.36rem] ${omitBonds ? "bg-sky-500" : "bg-slate-500"}`}
                           animate={{ left: omitBonds ? "50%" : "0.125rem" }}
-                          transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 26,
+                          }}
                         />
                         <span className="absolute top-0.5 bottom-0.5 left-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
-                          <span className={`${omitBonds ? "text-slate-600" : "text-white"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}>Include</span>
+                          <span
+                            className={`${omitBonds ? "text-slate-600" : "text-white"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}
+                          >
+                            Include
+                          </span>
                         </span>
                         <span className="absolute top-0.5 bottom-0.5 right-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
-                          <span className={`${omitBonds ? "text-white" : "text-slate-600"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}>Auto-generate</span>
+                          <span
+                            className={`${omitBonds ? "text-white" : "text-slate-600"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}
+                          >
+                            Auto-generate
+                          </span>
                         </span>
-                        <span className="sr-only">{omitBonds ? "Auto-generate bonds" : "Include bonds"}</span>
+                        <span className="sr-only">
+                          {omitBonds ? "Auto-generate bonds" : "Include bonds"}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -872,7 +1028,9 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                 {typeof useDelta === "boolean" && onChangeUseDelta ? (
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Atom indices</label>
+                      <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        Atom indices
+                      </label>
                     </div>
                     <div className="mt-1">
                       <button
@@ -887,15 +1045,29 @@ export const QrMaker = ({ shareUrl, encodedLength, title, onChangeTitle, omitBon
                         <motion.div
                           className={`absolute top-0.5 bottom-0.5 left-0.5 w-[calc(50%-2px)] rounded-[0.36rem] ${useDelta ? "bg-sky-500" : "bg-slate-500"}`}
                           animate={{ left: useDelta ? "50%" : "0.125rem" }}
-                          transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 26,
+                          }}
                         />
                         <span className="absolute top-0.5 bottom-0.5 left-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
-                          <span className={`${useDelta ? "text-slate-600" : "text-white"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}>As-is</span>
+                          <span
+                            className={`${useDelta ? "text-slate-600" : "text-white"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}
+                          >
+                            As-is
+                          </span>
                         </span>
                         <span className="absolute top-0.5 bottom-0.5 right-0.5 z-10 grid w-[calc(50%-2px)] place-items-center">
-                          <span className={`${useDelta ? "text-white" : "text-slate-600"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}>Optimized</span>
+                          <span
+                            className={`${useDelta ? "text-white" : "text-slate-600"} text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis`}
+                          >
+                            Optimized
+                          </span>
                         </span>
-                        <span className="sr-only">{useDelta ? "Optimized" : "As-is"}</span>
+                        <span className="sr-only">
+                          {useDelta ? "Optimized" : "As-is"}
+                        </span>
                       </button>
                     </div>
                   </div>

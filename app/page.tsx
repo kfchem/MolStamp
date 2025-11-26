@@ -8,16 +8,33 @@ import { Viewer } from "@/components/Viewer";
 import { OptionsPanel } from "@/components/OptionsPanel";
 import { ArPanel } from "@/components/ArPanel";
 import { QrMaker } from "@/components/QrMaker";
-import { APP_NAME, TAGLINE, PLUS_NAME, PLUS_URL, REPO_URL } from "@/lib/branding";
+import {
+  ArrowPathIcon,
+  CodeBracketIcon,
+  InformationCircleIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
+import {
+  APP_NAME,
+  TAGLINE,
+  PLUS_NAME,
+  PLUS_URL,
+  REPO_URL,
+  BRAND_SVG,
+} from "@/lib/branding";
 import { parseSdf } from "@/lib/parse/parseSdf";
 import { parseXyz } from "@/lib/parse/parseXyz";
-import { encodeShareData, encodeShareDataEncrypted, buildShareUrl } from "@/lib/share/encode";
+import {
+  encodeShareData,
+  encodeShareDataEncrypted,
+  buildShareUrl,
+} from "@/lib/share/encode";
 import type { Molecule, MoleculeFormat, StyleSettings } from "@/lib/chem/types";
 
 const DEFAULT_STYLE: StyleSettings = {
   material: "standard",
   atomScale: 0.28,
-  bondRadius: 0.10,
+  bondRadius: 0.1,
   quality: "high",
 };
 
@@ -80,24 +97,30 @@ const HomePage = () => {
   const [title, setTitle] = useState<string>("");
   const [encrypt, setEncrypt] = useState<boolean>(false);
   const [password, setPassword] = useState<string>("");
-  const [orientationQ, setOrientationQ] = useState<THREE.Quaternion | null>(null);
-  const [precisionDrop, setPrecisionDrop] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(0);
+  const [orientationQ, setOrientationQ] = useState<THREE.Quaternion | null>(
+    null
+  );
+  const [precisionDrop, setPrecisionDrop] = useState<
+    0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+  >(0);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   // Heuristic: consider keyboard open if visualViewport height is significantly smaller than layout viewport
   useEffect(() => {
-    const vv = (typeof window !== 'undefined' ? (window as any).visualViewport : null) as VisualViewport | null;
+    const vv = (
+      typeof window !== "undefined" ? (window as any).visualViewport : null
+    ) as VisualViewport | null;
     if (!vv) return;
     const onVVChange = () => {
       const ratio = vv.height / window.innerHeight;
       setKeyboardOpen(ratio < 0.85); // threshold tweakable
     };
-    vv.addEventListener('resize', onVVChange);
-    vv.addEventListener('scroll', onVVChange);
+    vv.addEventListener("resize", onVVChange);
+    vv.addEventListener("scroll", onVVChange);
     onVVChange();
     return () => {
-      vv.removeEventListener('resize', onVVChange);
-      vv.removeEventListener('scroll', onVVChange);
+      vv.removeEventListener("resize", onVVChange);
+      vv.removeEventListener("scroll", onVVChange);
     };
   }, []);
 
@@ -112,8 +135,8 @@ const HomePage = () => {
       const parsed = parseMolecule(payload.text, payload.format);
       setMolecule(parsed);
       setFormat(payload.format);
-  setFileMeta({ name: payload.file.name, size: payload.file.size });
-  setTitle("");
+      setFileMeta({ name: payload.file.name, size: payload.file.size });
+      setTitle("");
 
       if (payload.format === "xyz") {
         setOmitBonds(true);
@@ -124,11 +147,11 @@ const HomePage = () => {
       const large = parsed.atoms.length > LARGE_ATOM_THRESHOLD;
       setStyle({
         ...DEFAULT_STYLE,
-        quality: large ? "low" : DEFAULT_STYLE.quality,
+        quality: large ? "medium" : DEFAULT_STYLE.quality,
       });
       if (large) {
         setInfo(
-          `Loaded ${parsed.atoms.length} atoms - switched to Low quality for performance. Adjust if your device can handle it.`,
+          `Loaded ${parsed.atoms.length} atoms - switched to Low quality for performance. Adjust if your device can handle it.`
         );
       }
     } catch (parseError) {
@@ -160,16 +183,36 @@ const HomePage = () => {
         })();
         const useEnc = encrypt && password.trim().length >= 4;
         if (useEnc) {
-          const hasCrypto = typeof globalThis !== 'undefined' && (globalThis as any).crypto && (globalThis as any).crypto.subtle;
+          const hasCrypto =
+            typeof globalThis !== "undefined" &&
+            (globalThis as any).crypto &&
+            (globalThis as any).crypto.subtle;
           if (!hasCrypto) {
-            throw new Error("Encryption requires Web Crypto (HTTPS). Disable encryption or open this page over HTTPS.");
+            throw new Error(
+              "Encryption requires Web Crypto (HTTPS). Disable encryption or open this page over HTTPS."
+            );
           }
         }
-    const { encoded, byteLength, scaleExp } = useEnc
-          ? await encodeShareDataEncrypted({ molecule: molForShare, style, omitBonds, precisionDrop, useDelta, title, password: password.trim() })
-          : encodeShareData({ molecule: molForShare, style, omitBonds, precisionDrop, useDelta, title });
-    const url = buildShareUrl(encoded);
-  setShareState({ encoded, byteLength, url, scaleExp });
+        const { encoded, byteLength, scaleExp } = useEnc
+          ? await encodeShareDataEncrypted({
+              molecule: molForShare,
+              style,
+              omitBonds,
+              precisionDrop,
+              useDelta,
+              title,
+              password: password.trim(),
+            })
+          : encodeShareData({
+              molecule: molForShare,
+              style,
+              omitBonds,
+              precisionDrop,
+              useDelta,
+              title,
+            });
+        const url = buildShareUrl(encoded);
+        setShareState({ encoded, byteLength, url, scaleExp });
         setError(null);
       } catch (e) {
         console.error(e);
@@ -178,7 +221,17 @@ const HomePage = () => {
       }
     }, 600);
     return () => clearTimeout(id);
-  }, [molecule, style, omitBonds, precisionDrop, useDelta, title, encrypt, password, orientationQ]);
+  }, [
+    molecule,
+    style,
+    omitBonds,
+    precisionDrop,
+    useDelta,
+    title,
+    encrypt,
+    password,
+    orientationQ,
+  ]);
 
   const headerSubtitle = useMemo(() => {
     if (!molecule || !fileMeta) {
@@ -207,14 +260,21 @@ const HomePage = () => {
   }, [fileMeta, format, molecule]);
 
   return (
-  <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5 px-4 pb-10 pt-6 sm:px-6 lg:px-8">
+    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5 px-4 pb-10 pt-6 sm:px-6 lg:px-8">
       <header className="space-y-3">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <h1 className="bg-gradient-to-r from-sky-600 to-violet-600 bg-clip-text text-4xl font-extrabold text-transparent md:text-5xl">
-              {APP_NAME}
-            </h1>
-            <div className="mt-2 min-h-6">
+            <div className="flex items-center gap-3">
+              <span
+                className="inline-flex h-14 w-14 items-center justify-center rounded-lg"
+                aria-hidden="true"
+                dangerouslySetInnerHTML={{ __html: BRAND_SVG }}
+              />
+              <h1 className="text-4xl font-black text-[#2082C5] md:text-5xl">
+                {APP_NAME}
+              </h1>
+            </div>
+            <div className="mt-3 min-h-6">
               {headerMeta ? (
                 <div className="flex flex-wrap gap-2">
                   {headerMeta.map((chip) => (
@@ -230,7 +290,7 @@ const HomePage = () => {
                 <p className="text-sm leading-6 text-slate-600">
                   {headerSubtitle}{" "}
                   <span>
-                    For 2D drawings, use {" "}
+                    For 2D drawings, use{" "}
                     <a
                       href={PLUS_URL}
                       target="_blank"
@@ -252,23 +312,9 @@ const HomePage = () => {
               disabled={!molecule}
               className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v6h6M20 20v-6h-6" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20 10a8 8 0 0 0-14-4M4 14a8 8 0 0 0 14 4" />
-              </svg>
+              <ArrowPathIcon className="h-4 w-4" />
               Reset
             </button>
-              <a
-                href={REPO_URL}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Open GitHub repository"
-                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                  <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.486 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.091.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.605-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.607.069-.607 1.004.07 1.532 1.032 1.532 1.032.893 1.53 2.341 1.088 2.91.833.091-.647.35-1.088.636-1.339-2.221-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.748-1.026 2.748-1.026.546 1.378.202 2.397.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.337 4.695-4.566 4.944.359.31.679.919.679 1.852 0 1.336-.012 2.414-.012 2.742 0 .267.18.577.688.479A10.02 10.02 0 0 0 22 12.017C22 6.486 17.523 2 12 2z" />
-                </svg>
-              </a>
           </div>
         </div>
       </header>
@@ -276,65 +322,111 @@ const HomePage = () => {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4 min-w-0">
           <UploadDropzone
-            variant="overlay"
             onFileLoaded={onFileLoaded}
             onError={setError}
             className="rounded-xl"
             disableClick={Boolean(molecule)}
             disableDrop={false}
           >
-            <Viewer
-              molecule={molecule}
-              style={style}
-              onGroupReady={setViewerGroup}
-              showRotateControl
-              onOrientationChange={(q)=> setOrientationQ(q)}
-              className={keyboardOpen ? "h-[50dvh] min-h-[340px]" : "h-[50lvh] min-h-[340px]"}
-            />
+            <div className="relative w-full">
+              {!molecule ? (
+                <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center text-center">
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 px-6 py-5 shadow-sm backdrop-blur">
+                    <p className="text-base font-semibold text-slate-900">
+                      Drop or click to load a molecule
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      SDF/MOL or XYZ 3D data — processed locally.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              <Viewer
+                molecule={molecule}
+                style={style}
+                onGroupReady={setViewerGroup}
+                showRotateControl
+                onOrientationChange={(q) => setOrientationQ(q)}
+                className={
+                  keyboardOpen
+                    ? "h-[50dvh] min-h-[340px]"
+                    : "h-[50lvh] min-h-[340px]"
+                }
+              />
+            </div>
           </UploadDropzone>
-          <OptionsPanel value={style} onChange={setStyle} disabled={!molecule} />
+          <OptionsPanel
+            value={style}
+            onChange={setStyle}
+            disabled={!molecule}
+          />
 
           {info ? (
-            <div role="status" aria-live="polite" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 flex-none text-amber-600" fill="currentColor" aria-hidden>
-                <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm0 14a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5Zm-1-8h2v6h-2V8Z" />
-              </svg>
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              <InformationCircleIcon className="mt-0.5 h-4 w-4 flex-none text-amber-600" />
               <span>{info}</span>
             </div>
           ) : null}
           {error ? (
-            <div role="alert" aria-live="assertive" className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 flex-none text-rose-600" fill="currentColor" aria-hidden>
-                <path fillRule="evenodd" clipRule="evenodd" d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm1 13.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM11 7h2v6h-2V7Z" />
-              </svg>
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+            >
+              <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 flex-none text-rose-600" />
               <span>{error}</span>
             </div>
           ) : null}
         </div>
 
-          <div className="space-y-4 lg:sticky lg:top-6 min-w-0">
-            <ArPanel source={viewerGroup} disabled={!molecule} showOpenAr showSizes={false} />
-            <QrMaker
-              shareUrl={shareState?.url ?? null}
-              encodedLength={shareState?.encoded.length ?? null}
-              payloadBytes={shareState?.byteLength ?? null}
-              scaleExp={shareState?.scaleExp}
-                title={title}
-                onChangeTitle={setTitle}
-              omitBonds={omitBonds}
-              onChangeOmitBonds={setOmitBonds}
-                precisionDrop={precisionDrop}
-                onChangePrecisionDrop={setPrecisionDrop}
-                useDelta={useDelta}
-                onChangeUseDelta={setUseDelta}
-                encrypt={encrypt}
-                onChangeEncrypt={setEncrypt}
-                password={password}
-                onChangePassword={setPassword}
-              key={qrResetKey}
-            />
-          </div>
+        <div className="space-y-4 lg:sticky lg:top-6 min-w-0">
+          <ArPanel
+            source={viewerGroup}
+            disabled={!molecule}
+            showOpenAr
+            showSizes={false}
+          />
+          <QrMaker
+            shareUrl={shareState?.url ?? null}
+            encodedLength={shareState?.encoded.length ?? null}
+            payloadBytes={shareState?.byteLength ?? null}
+            scaleExp={shareState?.scaleExp}
+            title={title}
+            onChangeTitle={setTitle}
+            omitBonds={omitBonds}
+            onChangeOmitBonds={setOmitBonds}
+            precisionDrop={precisionDrop}
+            onChangePrecisionDrop={setPrecisionDrop}
+            useDelta={useDelta}
+            onChangeUseDelta={setUseDelta}
+            encrypt={encrypt}
+            onChangeEncrypt={setEncrypt}
+            password={password}
+            onChangePassword={setPassword}
+            key={qrResetKey}
+          />
+        </div>
       </div>
+      <footer className="mt-2 py-1">
+        <div className="max-w-6xl mx-auto flex items-center justify-center gap-4 text-sm text-slate-600">
+          <span className="text-slate-600">© {new Date().getFullYear()} MolStamp</span>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="GitHub"
+            className="text-slate-600 hover:text-sky-600"
+          >
+            GitHub
+          </a>
+          <a href={REPO_URL + "/blob/main/README.md#license"} target="_blank" rel="noreferrer" className="text-slate-600 hover:text-sky-600">License</a>
+          <a href={REPO_URL + "/blob/main/README.md#privacy-and-security-notes"} target="_blank" rel="noreferrer" className="text-slate-600 hover:text-sky-600">Privacy</a>
+        </div>
+      </footer>
     </main>
   );
 };

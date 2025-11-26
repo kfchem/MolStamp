@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDownIcon, CheckIcon } from "@heroicons/react/24/solid";
 
 type Option<T extends string> = {
   value: T;
@@ -29,7 +30,10 @@ export function AnimatedSelect<T extends string>({
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const current = useMemo(() => options.find((o) => o.value === value), [options, value]);
+  const current = useMemo(
+    () => options.find((o) => o.value === value),
+    [options, value]
+  );
 
   // click outside to close
   useEffect(() => {
@@ -69,16 +73,15 @@ export function AnimatedSelect<T extends string>({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={`block ${current ? "text-slate-900" : "text-slate-400"}`}>
+        <span
+          className={`block ${current ? "text-slate-900" : "text-slate-400"}`}
+        >
           {current?.label ?? placeholder}
         </span>
-        <svg
-          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 fill-slate-400"
-          viewBox="0 0 20 20"
+        <ChevronDownIcon
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
           aria-hidden="true"
-        >
-          <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.207l3.71-2.977a.75.75 0 1 1 .94 1.172l-4.2 3.366a.75.75 0 0 1-.94 0l-4.2-3.366a.75.75 0 0 1-.02-1.062z" />
-        </svg>
+        />
       </button>
 
       <AnimatePresence>
@@ -110,9 +113,7 @@ export function AnimatedSelect<T extends string>({
                 >
                   <span>{opt.label}</span>
                   {selected ? (
-                    <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20" aria-hidden>
-                      <path d="M7.629 13.233 4.4 10.004l1.131-1.131 2.098 2.098 6.84-6.84 1.131 1.131z" />
-                    </svg>
+                    <CheckIcon className="h-4 w-4 text-sky-600" aria-hidden />
                   ) : (
                     <span className="h-4 w-4" />
                   )}
