@@ -468,9 +468,9 @@ export const QrMaker = ({
           }
           parts.push(`Base URL: ${fmt(baseBytes)}`);
           const detail = parts.join(" • ");
-          if (/code length overflow/i.test(msg)) {
+          if (/too big to be stored in a qr code/i.test(msg)) {
             setError(
-              `Payload exceeds 2D barcode capacity (${detail}). Try Bond omission, increase Coordinate step (approx.) (e.g., drop bits 0→2→4→6→8), enable Use delta encoding, or lower Error correction.`
+              `Payload exceeds 2D barcode capacity (${detail}). Try Bond omission, increase Coordinate step, enable optimized atom indices, or lower Error correction.`
             );
           } else {
             setError(`${msg} (${detail})`);
