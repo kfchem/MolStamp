@@ -206,7 +206,7 @@ export const Viewer = ({
     const dy = e.clientY - startPos.current.y;
     const ROT_SENS = 0.018;
     const yaw = startRot.current.y + dx * ROT_SENS;
-    const pitch = THREE.MathUtils.clamp(startRot.current.x + dy * ROT_SENS, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
+    const pitch = startRot.current.x + dy * ROT_SENS;
     groupRef.current.rotation.set(pitch, yaw, startRot.current.z);
     groupRef.current.updateMatrixWorld(true);
     orientationQ.current.copy(groupRef.current.quaternion);

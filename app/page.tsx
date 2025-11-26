@@ -9,8 +9,7 @@ import { OptionsPanel } from "@/components/OptionsPanel";
 import { ArPanel } from "@/components/ArPanel";
 import { QrMaker } from "@/components/QrMaker";
 import {
-  ArrowPathIcon,
-  CodeBracketIcon,
+  ArrowPathRoundedSquareIcon,
   InformationCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
@@ -312,7 +311,7 @@ const HomePage = () => {
               disabled={!molecule}
               className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <ArrowPathIcon className="h-4 w-4" />
+              <ArrowPathRoundedSquareIcon className="h-4 w-4" />
               Reset
             </button>
           </div>
