@@ -155,14 +155,20 @@ export const buildMoleculeMesh = (
     );
     const bondMaterial = createBondMaterial();
 
-    // Up to 2 instances per bond; set count after placement
+    // Calculate max instances needed (single=2, double=4, triple=6)
+    const maxInstances = bonds.reduce((sum, bond) => sum + (bond.order || 1) * 2, 0);
     const bondMesh = new THREE.InstancedMesh(
       bondGeometry,
       bondMaterial,
-      bonds.length * 2,
+      maxInstances,
     );
 
     let instanceIndex = 0;
+    const perpVec1 = new THREE.Vector3();
+    const perpVec2 = new THREE.Vector3();
+    const tempVec = new THREE.Vector3();
+    const offsetQuat = new THREE.Quaternion();
+
     bonds.forEach((bond) => {
       const a = atoms[bond.i];
       const b = atoms[bond.j];
@@ -190,20 +196,58 @@ export const buildMoleculeMesh = (
       const halfHalf = halfSpan * 0.5; // distance from center of half cylinder to its end
       quaternion.setFromUnitVectors(axisY, dirNorm);
 
-      // Half from A
-      const centerA = new THREE.Vector3()
-        .copy(position)
-        .addScaledVector(dirNorm, rAe + halfHalf);
-      scale.set(style.bondRadius, halfSpan, style.bondRadius);
-      matrix.compose(centerA, quaternion, scale);
-      bondMesh.setMatrixAt(instanceIndex++, matrix);
+      const order = bond.order || 1;
+      
+      // For multiple bonds, calculate perpendicular vectors
+      if (order > 1) {
+        // Find a vector perpendicular to the bond direction
+        if (Math.abs(dirNorm.y) < 0.9) {
+          perpVec1.set(0, 1, 0);
+        } else {
+          perpVec1.set(1, 0, 0);
+        }
+        perpVec1.crossVectors(perpVec1, dirNorm).normalize();
+        perpVec2.crossVectors(dirNorm, perpVec1).normalize();
+      }
 
-      // Half from B
-      const centerB = new THREE.Vector3()
-        .copy(target)
-        .addScaledVector(dirNorm, -rBe - halfHalf);
-      matrix.compose(centerB, quaternion, scale);
-      bondMesh.setMatrixAt(instanceIndex++, matrix);
+      // Spacing between multiple bonds
+      const bondSpacing = style.bondRadius * 2.8;
+
+      // Draw cylinders based on bond order
+      for (let i = 0; i < order; i++) {
+        let offset = new THREE.Vector3(0, 0, 0);
+        
+        if (order === 2) {
+          // Double bond: offset perpendicular
+          offset = perpVec1.clone().multiplyScalar((i === 0 ? -1 : 1) * bondSpacing * 0.5);
+        } else if (order === 3) {
+          // Triple bond: one center, two on sides
+          if (i === 0) {
+            offset = new THREE.Vector3(0, 0, 0);
+          } else if (i === 1) {
+            offset = perpVec1.clone().multiplyScalar(bondSpacing * 0.5);
+          } else {
+            offset = perpVec1.clone().multiplyScalar(-bondSpacing * 0.5);
+          }
+        }
+
+        // Half from A
+        const centerA = new THREE.Vector3()
+          .copy(position)
+          .addScaledVector(dirNorm, rAe + halfHalf)
+          .add(offset);
+        scale.set(style.bondRadius, halfSpan, style.bondRadius);
+        matrix.compose(centerA, quaternion, scale);
+        bondMesh.setMatrixAt(instanceIndex++, matrix);
+
+        // Half from B
+        const centerB = new THREE.Vector3()
+          .copy(target)
+          .addScaledVector(dirNorm, -rBe - halfHalf)
+          .add(offset);
+        matrix.compose(centerB, quaternion, scale);
+        bondMesh.setMatrixAt(instanceIndex++, matrix);
+      }
     });
 
   // Update instance count
