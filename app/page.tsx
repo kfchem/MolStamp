@@ -287,19 +287,7 @@ const HomePage = () => {
                 </div>
               ) : (
                 <p className="text-sm leading-6 text-slate-600">
-                  {headerSubtitle}{" "}
-                  <span>
-                    For 2D drawings, use{" "}
-                    <a
-                      href={PLUS_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sky-600 hover:text-sky-700 underline underline-offset-2"
-                    >
-                      {PLUS_NAME}
-                    </a>
-                    .
-                  </span>
+                  {headerSubtitle}
                 </p>
               )}
             </div>
