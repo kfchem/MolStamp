@@ -290,8 +290,8 @@ export const Viewer = ({
         className="h-full w-full"
       >
         <color attach="background" args={[bgColor]} />
-        <ambientLight intensity={0.75} />
-        <hemisphereLight args={[0xf5f7fb, 0x9aa5b1, 0.6]} />
+        <ambientLight intensity={0.85} />
+        <hemisphereLight args={[0xf5f7fb, 0xd8dfe8, 0.7]} />
         <directionalLight position={[4, 6, 3]} intensity={0.8} castShadow />
         <Suspense fallback={null}>
           <SceneContent
